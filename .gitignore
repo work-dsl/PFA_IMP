@@ -9,9 +9,10 @@
 # 默认的输出文件夹，包含了所有编译生成的文件
 Objects/
 Listings/
+Debugconfig/
+RTE/
 
 ## 编译过程中生成的具体文件
-# 这些文件都可以通过源文件重新生成
 *.o
 *.obj
 *.d
@@ -27,14 +28,12 @@ Listings/
 *.plg
 *.bak
 *.iex
+*.sct
 
 ## 调试器相关文件
-# 调试器配置文件和日志，属于个人环境
 JLinkLog.txt
 JLinkSettings.ini
-*.base@*
 *.icf
 *.html
 
-# 【重要】添加例外：不忽略这个特定的文件
-!自定义协议帧生成器.html
+# 添加例外：不忽略这个特定的文件
