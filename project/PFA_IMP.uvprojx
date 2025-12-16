@@ -7,23 +7,23 @@
 
   <Targets>
     <Target>
-      <TargetName>Template</TargetName>
+      <TargetName>STM32F103RET6</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
       <pCCUsed>6230000::V6.23::ARMCLANG</pCCUsed>
       <uAC6>1</uAC6>
       <TargetOption>
         <TargetCommonOption>
-          <Device>STM32F103ZE</Device>
+          <Device>STM32F103RE</Device>
           <Vendor>STMicroelectronics</Vendor>
           <PackID>Keil.STM32F1xx_DFP.2.4.1</PackID>
           <PackURL>https://www.keil.com/pack/</PackURL>
           <Cpu>IRAM(0x20000000,0x00010000) IROM(0x08000000,0x00080000) CPUTYPE("Cortex-M3") CLOCK(12000000) ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
           <StartupFile></StartupFile>
-          <FlashDriverDll>UL2CM3(-S0 -C0 -P0 -FD20000000 -FC1000 -FN1 -FF0STM32F10x_512 -FS08000000 -FL080000 -FP0($$Device:STM32F103ZE$Flash\STM32F10x_512.FLM))</FlashDriverDll>
+          <FlashDriverDll>UL2CM3(-S0 -C0 -P0 -FD20000000 -FC1000 -FN1 -FF0STM32F10x_512 -FS08000000 -FL080000 -FP0($$Device:STM32F103RE$Flash\STM32F10x_512.FLM))</FlashDriverDll>
           <DeviceId>0</DeviceId>
-          <RegisterFile>$$Device:STM32F103ZE$Device\Include\stm32f10x.h</RegisterFile>
+          <RegisterFile>$$Device:STM32F103RE$Device\Include\stm32f10x.h</RegisterFile>
           <MemoryEnv></MemoryEnv>
           <Cmp></Cmp>
           <Asm></Asm>
@@ -33,7 +33,7 @@
           <SLE66CMisc></SLE66CMisc>
           <SLE66AMisc></SLE66AMisc>
           <SLE66LinkerMisc></SLE66LinkerMisc>
-          <SFDFile>$$Device:STM32F103ZE$SVD\STM32F103xx.svd</SFDFile>
+          <SFDFile>$$Device:STM32F103RE$SVD\STM32F103xx.svd</SFDFile>
           <bCustSvd>0</bCustSvd>
           <UseEnv>0</UseEnv>
           <BinPath></BinPath>
@@ -49,7 +49,7 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>.\Objects\</OutputDirectory>
-          <OutputName>template</OutputName>
+          <OutputName>PFA_IMP</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>1</CreateHexFile>
@@ -440,25 +440,60 @@
               <FileType>1</FileType>
               <FilePath>..\devices\gpio.c</FilePath>
             </File>
+            <File>
+              <FileName>watchdog.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\devices\watchdog.c</FilePath>
+            </File>
+            <File>
+              <FileName>serial.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\devices\serial.c</FilePath>
+            </File>
+            <File>
+              <FileName>pwm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\devices\pwm.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
           <GroupName>drivers/bsp</GroupName>
           <Files>
             <File>
-              <FileName>bsp_gpio.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\drivers\bsp\stm32\hal\bsp_gpio.c</FilePath>
-            </File>
-            <File>
               <FileName>bsp_dwt.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\drivers\bsp\stm32\hal\bsp_dwt.c</FilePath>
             </File>
             <File>
+              <FileName>bsp_flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\drivers\bsp\stm32\hal\bsp_flash.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_gpio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\drivers\bsp\stm32\hal\bsp_gpio.c</FilePath>
+            </File>
+            <File>
               <FileName>bsp_it.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\drivers\bsp\stm32\hal\bsp_it.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_iwdg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\drivers\bsp\stm32\hal\bsp_iwdg.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_pwm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\drivers\bsp\stm32\hal\bsp_pwm.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_usart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\drivers\bsp\stm32\hal\bsp_usart.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -776,9 +811,29 @@
           <GroupName>utilities</GroupName>
           <Files>
             <File>
+              <FileName>crc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\utilities\crc.c</FilePath>
+            </File>
+            <File>
               <FileName>log.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\utilities\log.c</FilePath>
+            </File>
+            <File>
+              <FileName>kfifo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\utilities\kfifo.c</FilePath>
+            </File>
+            <File>
+              <FileName>sort_algo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\utilities\sort_algo.c</FilePath>
+            </File>
+            <File>
+              <FileName>stimer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\utilities\stimer.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -800,7 +855,7 @@
       <api Capiversion="1.1.0" Cclass="CMSIS-Compiler" Cgroup="STDOUT" condition="CortexDevice" exclusive="1">
         <package name="CMSIS-Compiler" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="ARM" version="2.1.0"/>
         <targetInfos>
-          <targetInfo name="Template"/>
+          <targetInfo name="STM32F103RET6"/>
         </targetInfos>
       </api>
     </apis>
@@ -808,19 +863,19 @@
       <component Cclass="CMSIS-Compiler" Cgroup="CORE" Cvendor="ARM" Cversion="1.1.0" condition="ARMCC CortexDevice">
         <package name="CMSIS-Compiler" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="ARM" version="2.1.0"/>
         <targetInfos>
-          <targetInfo name="Template"/>
+          <targetInfo name="STM32F103RET6"/>
         </targetInfos>
       </component>
       <component Capiversion="1.1.0" Cclass="CMSIS-Compiler" Cgroup="STDOUT" Csub="Custom" Cvendor="ARM" Cversion="1.1.0" condition="CORE" custom="1">
         <package name="CMSIS-Compiler" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="ARM" version="2.1.0"/>
         <targetInfos>
-          <targetInfo name="Template"/>
+          <targetInfo name="STM32F103RET6"/>
         </targetInfos>
       </component>
       <component Cclass="CMSIS" Cgroup="CORE" Cvendor="ARM" Cversion="6.1.1" condition="ARMv6_7_8-M Device">
         <package name="CMSIS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="6.2.0"/>
         <targetInfos>
-          <targetInfo name="Template"/>
+          <targetInfo name="STM32F103RET6"/>
         </targetInfos>
       </component>
     </components>
