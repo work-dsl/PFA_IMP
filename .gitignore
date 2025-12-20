@@ -4,6 +4,7 @@
 # 存储了调试器设置、断点、窗口布局等个人配置
 *.uvoptx
 *.uvguix*
+*.scvd
 
 ## 编译输出目录
 # 默认的输出文件夹，包含了所有编译生成的文件
@@ -38,4 +39,5 @@ JLinkSettings.ini
 ## vs code 忽略文件
 .vscode/
 
-# 添加例外：不忽略这个特定的文件
+.cache/
+.cursor/

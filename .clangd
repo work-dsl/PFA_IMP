@@ -1,0 +1,18 @@
+CompileFlags:
+  Add: [
+    "-target", "arm-none-eabi",
+    "-mthumb",
+    "-mcpu=cortex-m3",
+    "-D__vsf_can_ignore_attribute__=__attribute__((unused))",
+    "-Wno-invalid-token-paste",
+    "-Wno-unknown-attributes",
+    "-Wno-missing-declarations",
+    "-I", "D:/Keil_v5/ARM/ARMCLANG/include",
+  ]
+  Remove: [ "-mrtp", "-fms-extensions" ]
+
+Index:
+  Background: Build
+
+Diagnostics:
+  UnusedIncludes: Strict

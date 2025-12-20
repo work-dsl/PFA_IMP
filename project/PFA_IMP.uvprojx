@@ -138,7 +138,7 @@
           </Flash1>
           <bUseTDR>1</bUseTDR>
           <Flash2>BIN\UL2CM3.DLL</Flash2>
-          <Flash3></Flash3>
+          <Flash3>"" ()</Flash3>
           <Flash4></Flash4>
           <pFcarmOut></pFcarmOut>
           <pFcarmGrp></pFcarmGrp>
@@ -314,7 +314,7 @@
           </ArmAdsMisc>
           <Cads>
             <interw>1</interw>
-            <Optim>4</Optim>
+            <Optim>1</Optim>
             <oTime>0</oTime>
             <SplitLS>0</SplitLS>
             <OneElfS>1</OneElfS>
@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,USE_FULL_LL_DRIVER,STM32F103xE</Define>
               <Undefine></Undefine>
-              <IncludePath>..\users;..\utilities;..\utilities\math;..\utilities\filter;..\devices\inc;..\modules;..\drivers\bsp\stm32\hal;..\drivers\bsp\stm32\ll;..\middlewares\RTT;..\test;..\middlewares\proto;..\applications;..\drivers\cmsis-device-f1\Include;..\drivers\stm32f1xx-hal-driver\Inc;..\drivers\stm32f1xx-hal-driver\Inc\Legacy</IncludePath>
+              <IncludePath>..\users;..\utilities;..\utilities\math;..\utilities\filter;..\devices\inc;..\modules;..\drivers\bsp\stm32\hal;..\drivers\bsp\stm32\ll;..\middlewares\RTT;..\test;..\middlewares\proto;..\applications;..\drivers\stm32f1xx-hal-driver\Inc;..\drivers\stm32f1xx-hal-driver\Inc\Legacy;..\drivers\cmsis\Include;..\drivers\cmsis\Include\m-profile;..\drivers\cmsis\cmsis-device-f1\Include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -450,11 +450,6 @@
               <FileType>1</FileType>
               <FilePath>..\devices\serial.c</FilePath>
             </File>
-            <File>
-              <FileName>pwm.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\devices\pwm.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -484,11 +479,6 @@
               <FileName>bsp_iwdg.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\drivers\bsp\stm32\hal\bsp_iwdg.c</FilePath>
-            </File>
-            <File>
-              <FileName>bsp_pwm.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\drivers\bsp\stm32\hal\bsp_pwm.c</FilePath>
             </File>
             <File>
               <FileName>bsp_usart.c</FileName>
@@ -798,12 +788,12 @@
             <File>
               <FileName>system_stm32f1xx.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\drivers\cmsis-device-f1\Source\Templates\system_stm32f1xx.c</FilePath>
+              <FilePath>..\drivers\cmsis\cmsis-device-f1\Source\Templates\system_stm32f1xx.c</FilePath>
             </File>
             <File>
               <FileName>startup_stm32f103xe.s</FileName>
               <FileType>2</FileType>
-              <FilePath>..\drivers\cmsis-device-f1\Source\Templates\arm\startup_stm32f103xe.s</FilePath>
+              <FilePath>..\drivers\cmsis\cmsis-device-f1\Source\Templates\arm\startup_stm32f103xe.s</FilePath>
             </File>
           </Files>
         </Group>
@@ -839,6 +829,18 @@
         </Group>
         <Group>
           <GroupName>test</GroupName>
+          <Files>
+            <File>
+              <FileName>serial_test.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\test\serial_test.c</FilePath>
+            </File>
+            <File>
+              <FileName>led_test.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\test\led_test.c</FilePath>
+            </File>
+          </Files>
         </Group>
         <Group>
           <GroupName>::CMSIS</GroupName>

@@ -20,6 +20,8 @@
   */
 /*------------------------------ include --------------------------------------*/
 #include "board.h"
+#include "serial_test.h"
+#include "led_test.h"
 
 #define  LOG_TAG             "main"
 #define  LOG_LVL             4
@@ -45,8 +47,14 @@ int main(void)
     /* 底层驱动初始化 */
     board_init();
 
-    while(1)
+    /* 测试初始化 */
+    led_test_init();
+    serial_test_init();
+
+    while (1)
     {
+        led_test_task();
+        serial_test_task();
     }
 }
 
