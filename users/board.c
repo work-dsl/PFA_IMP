@@ -25,6 +25,7 @@
 #include "bsp_gpio.h"
 #include "bsp_dwt.h"
 #include "bsp_usart.h"
+#include "bsp_spi.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -77,6 +78,7 @@ void board_init(void)
     bsp_gpio_init();
     bsp_dwt_init();
     bsp_uart_init();
+    bsp_spi_init();
 }
 
 /**
@@ -93,7 +95,7 @@ void SystemClock_Config(void)
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV2;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;

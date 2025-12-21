@@ -105,6 +105,8 @@
 #define BSP_USING_UART3
 #define BSP_USING_UART5
 
+#define BSP_USING_SPI1
+
 /* ============================================================================
  * UART1 配置
  * ============================================================================
@@ -158,6 +160,23 @@
     #define UART5_TX_BUF_SIZE               256
     #define UART5_RX_CACHE_BUF_SIZE         64
     #define BSP_UART5_IRQ_PRIORITY          0
+#endif
+
+
+/* ============================================================================
+ * SPI1 配置
+ * ============================================================================
+ */
+#ifdef BSP_USING_SPI1
+    #define BSP_SPI1_SCK_PORT              GPIOA
+    #define BSP_SPI1_SCK_PIN               GPIO_PIN_5
+    #define BSP_SPI1_MISO_PORT             GPIOD
+    #define BSP_SPI1_MISO_PIN              GPIO_PIN_6
+    #define BSP_SPI1_MOSI_PORT             GPIOA
+    #define BSP_SPI1_MOSI_PIN              GPIO_PIN_7
+    #define BSP_SPI1_CS_PORT               GPIOA
+    #define BSP_SPI1_CS_PIN                GPIO_PIN_4
+    #define BSP_SPI1_IRQ_PRIORITY          0
 #endif
 
 /* Exported typedef ----------------------------------------------------------*/

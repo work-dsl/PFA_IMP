@@ -22,6 +22,7 @@
 #include "board.h"
 #include "serial_test.h"
 #include "led_test.h"
+#include "spi_test.h"
 
 #define  LOG_TAG             "main"
 #define  LOG_LVL             4
@@ -50,6 +51,15 @@ int main(void)
     /* 测试初始化 */
     led_test_init();
     serial_test_init();
+    spi_test_init();
+    
+    /* 运行回环测试 */
+    int ret = spi_test_loopback();
+    if (ret == 0) {
+        /* 测试通过 */
+    } else {
+        /* 测试失败，检查硬件连接 */
+    }
 
     while (1)
     {
