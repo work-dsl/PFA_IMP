@@ -116,12 +116,12 @@
     #define BSP_UART1_RX_PIN                GPIO_PIN_10
     #define UART1_RX_BUF_SIZE               256
     #define UART1_TX_BUF_SIZE               256
+    #define UART1_RX_CACHE_BUF_SIZE         64
     #define BSP_UART1_IRQ_PRIORITY          0
 #ifdef BSP_UART1_RX_USING_DMA
     #define BSP_UART1_DMA_RX_INSTANCE       DMA1_Channel5
     #define BSP_UART1_DMA_RX_IRQn           DMA1_Channel5_IRQn
     #define UART1_DMA_RX_IRQHandler         DMA1_Channel5_IRQHandler
-    #define UART1_RX_DMA_BUF_SIZE           64
 #endif
 #ifdef BSP_UART1_TX_USING_DMA
     #define BSP_UART1_DMA_TX_INSTANCE       DMA1_Channel4
@@ -141,6 +141,7 @@
     #define BSP_UART3_RX_PIN                GPIO_PIN_11
     #define UART3_RX_BUF_SIZE               256
     #define UART3_TX_BUF_SIZE               256
+    #define UART3_RX_CACHE_BUF_SIZE         64
     #define BSP_UART3_IRQ_PRIORITY          0
 #endif
 
@@ -155,6 +156,7 @@
     #define BSP_UART5_RX_PIN                GPIO_PIN_2
     #define UART5_RX_BUF_SIZE               256
     #define UART5_TX_BUF_SIZE               256
+    #define UART5_RX_CACHE_BUF_SIZE         64
     #define BSP_UART5_IRQ_PRIORITY          0
 #endif
 
