@@ -26,6 +26,7 @@
 #include "bsp_dwt.h"
 #include "bsp_usart.h"
 #include "bsp_spi.h"
+#include "bsp_i2c.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -49,7 +50,16 @@ static void rtt_output_handler(const char *msg, size_t len);
   * @note
   */
 void board_init(void)
-{
+{ 
+//    DBGMCU->APB1FZR1 |= DBGMCU_APB1FZR1_DBG_WWDG_STOP;
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    HAL_Init();
+
+    /* Configure the system clock */
+    SystemClock_Config();
+    
+    HAL_Delay(1000);
+    
     /* 调试初始化 */
     SEGGER_RTT_Init();
     SEGGER_RTT_ConfigUpBuffer(0, "RTTUP", NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
@@ -57,28 +67,23 @@ void board_init(void)
     log_register_handler("rtt", rtt_output_handler);
     log_enable_handler("rtt");
     
-//    DBGMCU->APB1FZR1 |= DBGMCU_APB1FZR1_DBG_WWDG_STOP;
-    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-    HAL_Init();
+//    LOG_D("SYSCLK frequency is %d!", HAL_RCC_GetSysClockFreq());
 
-    /* Configure the system clock */
-    SystemClock_Config();
-    LOG_D("SYSCLK frequency is %d!", HAL_RCC_GetSysClockFreq());
-
-    /* 检查复位源 */
-    if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
-        LOG_D("Software reset.");
-    }
-    if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
-        LOG_W("IWDG timeout reset!");
-    }
-    __HAL_RCC_CLEAR_RESET_FLAGS();  /* 清除复位标志 */
+//    /* 检查复位源 */
+//    if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
+//        LOG_D("Software reset.");
+//    }
+//    if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
+//        LOG_W("IWDG timeout reset!");
+//    }
+//    __HAL_RCC_CLEAR_RESET_FLAGS();  /* 清除复位标志 */
 
     /* Initialize all configured peripherals */
     bsp_gpio_init();
     bsp_dwt_init();
     bsp_uart_init();
     bsp_spi_init();
+    bsp_i2c_init();
 }
 
 /**
@@ -119,7 +124,6 @@ void SystemClock_Config(void)
     Error_Handler();
   }
 }
-
 /**
   * Initializes the Global MSP.
   */

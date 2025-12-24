@@ -114,6 +114,24 @@ SPI设备代表一个连接到SPI总线的从设备（如SPI NOR Flash、传感�
 
 消息是一个或多个transfer的集合，可以作为一个原子操作执行。
 
+### 5. SPI模式标志
+
+SPI模式通过位字段组合配置：
+
+- **基础模式**：`SPI_MODE_0`、`SPI_MODE_1`、`SPI_MODE_2`、`SPI_MODE_3`
+- **位序**：`SPI_MODE_MSB`（MSB优先）、`SPI_MODE_LSB`（LSB优先）
+- **CS控制**：`SPI_MODE_SW_CS`（软件CS）、`SPI_MODE_HW_CS`（硬件CS）
+- **线数模式**：`SPI_MODE_4WIRE`（标准4线）、`SPI_MODE_3WIRE`（3线半双工）
+
+**示例：**
+```c
+// 软件CS，4线，MSB优先，模式0
+.mode = SPI_MODE_0 | SPI_MODE_SW_CS | SPI_MODE_4WIRE | SPI_MODE_MSB
+
+// 硬件CS，4线，MSB优先，模式1
+.mode = SPI_MODE_1 | SPI_MODE_HW_CS | SPI_MODE_4WIRE | SPI_MODE_MSB
+```
+
 ---
 
 ## 数据结构
@@ -149,12 +167,23 @@ struct spi_device {
     struct spi_controller *controller; // 父控制器
     uint32_t max_speed_hz;             // 最大时钟频率(Hz)
     uint8_t chip_select;               // CS编号（硬件CS，0-15）
-    uint8_t mode;                      // SPI模式 (SPI_MODE_0-3)
+    uint8_t mode;                      // SPI配置标志（位字段）：
+                                        //   - bit 0: CPHA (Clock Phase)
+                                        //   - bit 1: CPOL (Clock Polarity)
+                                        //   - bit 2: MSB/LSB (SPI_MODE_MSB/LSB)
+                                        //   - bit 3: CS控制 (SPI_MODE_HW_CS for hardware CS, 0 for software CS)
+                                        //   - bit 4: Wire mode (SPI_MODE_3WIRE/4WIRE)
+                                        //   使用SPI_MODE_0/1/2/3作为基础模式，可与其他标志组合
     uint8_t bits_per_word;             // 每字位数（通常8）
-    size_t cs_pin;                     // CS引脚（软件CS，0表示使用硬件CS）
+    size_t cs_pin;                     // CS引脚（仅软件CS有效，当mode中SPI_MODE_SW_CS位设置时有效）
     void *controller_data;             // 控制器私有数据
 };
 ```
+
+**重要说明：**
+- `mode`字段是位字段，可以组合多个标志。例如：`SPI_MODE_0 | SPI_MODE_SW_CS | SPI_MODE_4WIRE | SPI_MODE_MSB`
+- `cs_pin`字段仅在软件CS模式下有效（`mode`中`SPI_MODE_HW_CS`位未设置）
+- 硬件CS和软件CS通过`mode`字段的`SPI_MODE_HW_CS`位来区分，而不是通过`cs_pin == 0`来判断
 
 ### spi_controller
 
@@ -355,12 +384,15 @@ static void stm32_spi_set_cs(struct spi_controller *ctrl,
                              struct spi_device *dev, 
                              uint8_t enable)
 {
-    if (dev->cs_pin != 0) {
+    /* 通过mode字段判断是硬件CS还是软件CS */
+    if ((dev->mode & SPI_MODE_HW_CS) == 0U) {
         /* 软件CS：控制GPIO */
-        gpio_write(dev->cs_pin, enable ? 0 : 1);
+        /* enable=1表示CS激活（拉低），enable=0表示CS释放（拉高） */
+        gpio_write(dev->cs_pin, (enable != 0U) ? 0U : 1U);
     } else {
-        /* 硬件CS：控制硬件CS引脚 */
-        /* 根据enable设置硬件CS状态 */
+        /* 硬件CS：由硬件NSS引脚自动控制 */
+        /* STM32硬件NSS在配置为硬件模式时会自动管理 */
+        /* 无需额外操作 */
     }
 }
 
@@ -432,15 +464,27 @@ void bsp_spi_init(void)
 ### 3. 创建和附加设备
 
 ```c
-/* 定义设备 */
+/* 定义设备 - 软件CS示例 */
 static struct spi_device my_spi_device = {
     .name = "my_device",
     .controller = NULL,
     .max_speed_hz = 1000000U,      /* 1MHz */
-    .chip_select = 0U,              /* 硬件CS编号 */
-    .mode = SPI_MODE_0,
+    .chip_select = 0U,              /* 硬件CS编号（软件CS时忽略） */
+    .mode = SPI_MODE_0 | SPI_MODE_SW_CS | SPI_MODE_4WIRE | SPI_MODE_MSB,
     .bits_per_word = 8U,
-    .cs_pin = 0U,                   /* 0表示使用硬件CS */
+    .cs_pin = GPIO_PIN_4,           /* 软件CS引脚（GPIO Pin ID） */
+    .controller_data = NULL
+};
+
+/* 定义设备 - 硬件CS示例 */
+static struct spi_device my_hw_cs_device = {
+    .name = "hw_cs_device",
+    .controller = NULL,
+    .max_speed_hz = 1000000U,      /* 1MHz */
+    .chip_select = 0U,              /* 硬件CS编号 */
+    .mode = SPI_MODE_0 | SPI_MODE_HW_CS | SPI_MODE_4WIRE | SPI_MODE_MSB,
+    .bits_per_word = 8U,
+    .cs_pin = 0U,                   /* 硬件CS时忽略此字段 */
     .controller_data = NULL
 };
 
@@ -643,9 +687,9 @@ flowchart TD
     B --> C[调用spi_device_attach]
     C --> D{查找控制器}
     D -->|未找到| E[返回错误]
-    D -->|找到| F{软件CS?}
-    F -->|是| G[初始化CS GPIO]
-    F -->|否| H[使用硬件CS]
+    D -->|找到| F{检查mode字段}
+    F -->|SPI_MODE_HW_CS未设置| G[初始化CS GPIO]
+    F -->|SPI_MODE_HW_CS已设置| H[使用硬件CS]
     G --> I[设置CS为无效状态]
     H --> I
     I --> J[附加完成]
@@ -740,13 +784,13 @@ flowchart TD
 ```c
 #include "spi.h"
 
-/* 定义设备 */
+/* 定义设备 - 软件CS */
 static struct spi_device flash_device = {
     .name = "spi_nor_flash",
     .max_speed_hz = 10000000U,  /* 10MHz */
-    .mode = SPI_MODE_0,
+    .mode = SPI_MODE_0 | SPI_MODE_SW_CS | SPI_MODE_4WIRE | SPI_MODE_MSB,
     .bits_per_word = 8U,
-    .cs_pin = GPIO_PIN_4,        /* 软件CS */
+    .cs_pin = GPIO_PIN_4,        /* 软件CS引脚（GPIO Pin ID） */
 };
 
 void flash_init(void)
@@ -838,53 +882,139 @@ void sensor_read_reg16(uint8_t reg, uint16_t *value)
 
 ## BSP层实现
 
+### 重要注意事项
+
+1. **GPIO时钟使能**：在初始化SPI GPIO引脚之前，必须确保所有使用的GPIO端口时钟已使能
+2. **SPI最大速度限制**：BSP层应检查并限制SPI速度不超过硬件允许的最大值（如STM32F1的18MHz）
+3. **宏定义一致性**：使用LL库时，GPIO引脚宏应使用`LL_GPIO_PIN_x`而不是`GPIO_PIN_x`
+
 ### 完整示例
 
 ```c
 /* bsp_spi.c */
 
 #include "spi.h"
-#include "stm32f1xx_hal.h"
+#include "stm32f1xx_ll_spi.h"
+#include "stm32f1xx_ll_gpio.h"
+#include "stm32f1xx_ll_rcc.h"
 
 /* 硬件数据结构 */
 struct stm32_spi_hw {
-    SPI_HandleTypeDef hspi;
-    /* 其他硬件相关数据 */
+    SPI_TypeDef *instance;          /* SPI外设实例 */
+    uint32_t pclk_freq;              /* 外设时钟频率 */
+    uint32_t max_speed_hz;           /* 最大SPI速度 */
+    const char *name;                /* 控制器名称 */
 };
 
-static struct stm32_spi_hw spi1_hw;
+static struct stm32_spi_hw spi1_hw = {
+    .instance = SPI1,
+    .pclk_freq = 0U,  /* 将在初始化时计算 */
+    .max_speed_hz = 0U,
+    .name = "spi1"
+};
+
+/* GPIO时钟使能辅助函数 */
+static void stm32_spi_enable_gpio_clock(GPIO_TypeDef *gpio_port)
+{
+    if (gpio_port == GPIOA) {
+        LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOA);
+    } else if (gpio_port == GPIOB) {
+        LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
+    }
+    /* ... 其他GPIO端口 */
+}
+
+/* GPIO初始化函数 */
+static int stm32_spi_gpio_init(SPI_TypeDef *spi_instance)
+{
+    LL_GPIO_InitTypeDef gpio_init = {0};
+    
+    if (spi_instance == SPI1) {
+        /* 使能SPI1时钟 */
+        LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SPI1);
+        
+        /* 使能所有使用的GPIO端口时钟 */
+        stm32_spi_enable_gpio_clock(BSP_SPI1_SCK_PORT);
+        if (BSP_SPI1_MOSI_PORT != BSP_SPI1_SCK_PORT) {
+            stm32_spi_enable_gpio_clock(BSP_SPI1_MOSI_PORT);
+        }
+        if ((BSP_SPI1_MISO_PORT != BSP_SPI1_SCK_PORT) && 
+            (BSP_SPI1_MISO_PORT != BSP_SPI1_MOSI_PORT)) {
+            stm32_spi_enable_gpio_clock(BSP_SPI1_MISO_PORT);
+        }
+        
+        /* 配置SPI1引脚 */
+        gpio_init.Pin = BSP_SPI1_SCK_PIN;
+        gpio_init.Mode = LL_GPIO_MODE_ALTERNATE;
+        gpio_init.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+        gpio_init.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+        LL_GPIO_Init(BSP_SPI1_SCK_PORT, &gpio_init);
+
+        gpio_init.Pin = BSP_SPI1_MOSI_PIN;
+        LL_GPIO_Init(BSP_SPI1_MOSI_PORT, &gpio_init);
+
+        gpio_init.Pin = BSP_SPI1_MISO_PIN;
+        gpio_init.Mode = LL_GPIO_MODE_FLOATING;
+        LL_GPIO_Init(BSP_SPI1_MISO_PORT, &gpio_init);
+        
+        return 0;
+    }
+    
+    return -1;
+}
 
 /* Setup函数 */
 static int stm32_spi_setup(struct spi_controller *ctrl, 
                            struct spi_device *dev)
 {
-    SPI_HandleTypeDef *hspi = &spi1_hw.hspi;
+    struct stm32_spi_hw *hw = (struct stm32_spi_hw *)ctrl->priv;
+    LL_SPI_InitTypeDef spi_init = {0};
+    uint32_t prescaler;
     uint32_t actual_speed;
+    uint32_t requested_speed;
+    
+    /* 限制请求速度不超过硬件最大值 */
+    requested_speed = dev->max_speed_hz;
+    if (requested_speed > hw->max_speed_hz) {
+        requested_speed = hw->max_speed_hz;
+    }
+    
+    /* 计算分频器和实际速度 */
+    prescaler = calculate_prescaler(hw->pclk_freq, requested_speed, &actual_speed);
     
     /* 配置SPI参数 */
-    hspi->Init.Mode = SPI_MODE_MASTER;
-    hspi->Init.Direction = SPI_DIRECTION_2LINES;
-    hspi->Init.DataSize = (dev->bits_per_word == 16U) ? 
-                          SPI_DATASIZE_16BIT : SPI_DATASIZE_8BIT;
+    LL_SPI_StructInit(&spi_init);
+    spi_init.TransferDirection = LL_SPI_FULL_DUPLEX;
+    spi_init.Mode = LL_SPI_MODE_MASTER;
+    spi_init.DataWidth = (dev->bits_per_word == 16U) ? 
+                         LL_SPI_DATAWIDTH_16BIT : LL_SPI_DATAWIDTH_8BIT;
     
-    /* 配置SPI模式 */
-    if (dev->mode == SPI_MODE_0) {
-        hspi->Init.CLKPolarity = SPI_POLARITY_LOW;
-        hspi->Init.CLKPhase = SPI_PHASE_1EDGE;
-    } else if (dev->mode == SPI_MODE_1) {
-        hspi->Init.CLKPolarity = SPI_POLARITY_LOW;
-        hspi->Init.CLKPhase = SPI_PHASE_2EDGE;
+    /* 配置SPI模式（从dev->mode提取CPOL和CPHA） */
+    if ((dev->mode & SPI_CPOL) != 0U) {
+        spi_init.ClockPolarity = LL_SPI_POLARITY_HIGH;
+    } else {
+        spi_init.ClockPolarity = LL_SPI_POLARITY_LOW;
     }
-    /* ... 其他模式 */
     
-    /* 计算实际速度 */
-    actual_speed = calculate_spi_speed(dev->max_speed_hz);
-    hspi->Init.BaudRatePrescaler = actual_speed;
+    if ((dev->mode & SPI_CPHA) != 0U) {
+        spi_init.ClockPhase = LL_SPI_PHASE_2EDGE;
+    } else {
+        spi_init.ClockPhase = LL_SPI_PHASE_1EDGE;
+    }
+    
+    spi_init.NSS = LL_SPI_NSS_SOFT;  /* 始终使用软件NSS */
+    spi_init.BaudRate = prescaler;
+    spi_init.BitOrder = ((dev->mode & SPI_MODE_MSB) != 0U) ? 
+                        LL_SPI_MSB_FIRST : LL_SPI_LSB_FIRST;
+    spi_init.CRCCalculation = LL_SPI_CRCCALCULATION_DISABLE;
     
     /* 初始化SPI */
-    if (HAL_SPI_Init(hspi) != HAL_OK) {
+    if (LL_SPI_Init(hw->instance, &spi_init) != SUCCESS) {
         return -1;
     }
+    
+    /* 使能SPI */
+    LL_SPI_Enable(hw->instance);
     
     /* 保存实际速度到控制器 */
     ctrl->actual_speed_hz = actual_speed;
@@ -897,12 +1027,15 @@ static void stm32_spi_set_cs(struct spi_controller *ctrl,
                              struct spi_device *dev, 
                              uint8_t enable)
 {
-    if (dev->cs_pin != 0U) {
+    /* 通过mode字段判断是硬件CS还是软件CS */
+    if ((dev->mode & SPI_MODE_HW_CS) == 0U) {
         /* 软件CS：控制GPIO */
-        gpio_write(dev->cs_pin, enable ? 0U : 1U);
+        /* enable=1表示CS激活（拉低），enable=0表示CS释放（拉高） */
+        gpio_write(dev->cs_pin, (enable != 0U) ? 0U : 1U);
     } else {
-        /* 硬件CS：使用硬件NSS引脚 */
-        /* STM32硬件CS控制 */
+        /* 硬件CS：由硬件NSS引脚自动控制 */
+        /* STM32硬件NSS在配置为硬件模式时会自动管理 */
+        /* 无需额外操作 */
     }
 }
 
@@ -911,35 +1044,86 @@ static ssize_t stm32_spi_transfer_one(struct spi_controller *ctrl,
                                       struct spi_device *dev,
                                       struct spi_transfer *transfer)
 {
-    SPI_HandleTypeDef *hspi = &spi1_hw.hspi;
-    HAL_StatusTypeDef status;
+    struct stm32_spi_hw *hw = (struct stm32_spi_hw *)ctrl->priv;
+    SPI_TypeDef *spi = hw->instance;
+    const uint8_t *tx_buf = (const uint8_t *)transfer->tx_buf;
+    uint8_t *rx_buf = (uint8_t *)transfer->rx_buf;
+    size_t len = transfer->len;
+    size_t i;
+    uint8_t tx_byte;
+    uint8_t rx_byte;
+    uint32_t timeout;
     
-    if ((transfer->tx_buf != NULL) && (transfer->rx_buf != NULL)) {
-        /* 全双工传输 */
-        status = HAL_SPI_TransmitReceive(hspi, 
-                                        (uint8_t*)transfer->tx_buf,
-                                        transfer->rx_buf,
-                                        transfer->len,
-                                        HAL_MAX_DELAY);
-    } else if (transfer->tx_buf != NULL) {
-        /* 只发送 */
-        status = HAL_SPI_Transmit(hspi, 
-                                 (uint8_t*)transfer->tx_buf,
-                                 transfer->len,
-                                 HAL_MAX_DELAY);
-    } else {
-        /* 只接收 */
-        status = HAL_SPI_Receive(hspi, 
-                                transfer->rx_buf,
-                                transfer->len,
-                                HAL_MAX_DELAY);
+    /* 检查错误标志 */
+    if (LL_SPI_IsActiveFlag_OVR(spi) != 0U) {
+        LL_SPI_ClearFlag_OVR(spi);
+        return -EIO;
     }
     
-    if (status != HAL_OK) {
-        return -1;
+    /* 等待SPI就绪 */
+    timeout = 10000U;
+    while ((LL_SPI_IsActiveFlag_BSY(spi) != 0U) && (timeout > 0U)) {
+        timeout--;
     }
     
-    return (ssize_t)transfer->len;
+    if (timeout == 0U) {
+        return -EIO;
+    }
+    
+    /* 执行传输 */
+    for (i = 0U; i < len; i++) {
+        /* 准备TX数据 */
+        if (tx_buf != NULL) {
+            tx_byte = tx_buf[i];
+        } else {
+            tx_byte = 0xFFU;  /* 读取时发送dummy字节 */
+        }
+        
+        /* 等待TX缓冲区空 */
+        timeout = 10000U;
+        while ((LL_SPI_IsActiveFlag_TXE(spi) == 0U) && (timeout > 0U)) {
+            timeout--;
+        }
+        
+        if (timeout == 0U) {
+            return (ssize_t)i;
+        }
+        
+        /* 发送数据 */
+        LL_SPI_TransmitData8(spi, tx_byte);
+        
+        /* 等待RX缓冲区非空 */
+        timeout = 10000U;
+        while ((LL_SPI_IsActiveFlag_RXNE(spi) == 0U) && (timeout > 0U)) {
+            timeout--;
+        }
+        
+        if (timeout == 0U) {
+            return (ssize_t)i;
+        }
+        
+        /* 读取数据 */
+        rx_byte = LL_SPI_ReceiveData8(spi);
+        
+        /* 存储RX数据（如果提供了缓冲区） */
+        if (rx_buf != NULL) {
+            rx_buf[i] = rx_byte;
+        }
+    }
+    
+    /* 等待传输完成 */
+    timeout = 10000U;
+    while ((LL_SPI_IsActiveFlag_BSY(spi) != 0U) && (timeout > 0U)) {
+        timeout--;
+    }
+    
+    /* 检查溢出错误 */
+    if (LL_SPI_IsActiveFlag_OVR(spi) != 0U) {
+        LL_SPI_ClearFlag_OVR(spi);
+        return -EIO;
+    }
+    
+    return (ssize_t)len;
 }
 
 /* 定义操作函数表 */
@@ -953,9 +1137,24 @@ static const struct spi_controller_ops stm32_spi_ops = {
 int bsp_spi_init(void)
 {
     static struct spi_controller spi1_ctrl;
+    uint32_t pclk_freq;
+    uint32_t max_speed_hz;
     
-    /* 初始化硬件 */
-    /* ... */
+    /* 计算外设时钟频率 */
+    pclk_freq = get_pclk_freq(SPI1);
+    spi1_hw.pclk_freq = pclk_freq;
+    
+    /* 计算最大速度（PCLK/2，但不超过硬件限制） */
+    max_speed_hz = pclk_freq >> 1U;  /* PCLK/2 */
+    if (max_speed_hz > STM32_SPI_MAX_SPEED_HZ) {
+        max_speed_hz = STM32_SPI_MAX_SPEED_HZ;  /* 限制为18MHz */
+    }
+    spi1_hw.max_speed_hz = max_speed_hz;
+    
+    /* 初始化GPIO */
+    if (stm32_spi_gpio_init(SPI1) != 0) {
+        return -1;
+    }
     
     /* 注册控制器 */
     spi_controller_register(&spi1_ctrl, "spi1", &stm32_spi_ops);
@@ -1000,9 +1199,10 @@ int bsp_spi_init(void)
 
 ### 2. CS控制
 
-- 软件CS：由框架层控制GPIO
-- 硬件CS：由BSP层控制硬件NSS引脚
+- **软件CS**：通过`mode`字段中`SPI_MODE_SW_CS`（或`SPI_MODE_HW_CS`位未设置）来标识，由框架层控制GPIO，`cs_pin`字段指定GPIO引脚
+- **硬件CS**：通过`mode`字段中`SPI_MODE_HW_CS`位来标识，由硬件NSS引脚自动控制，`cs_pin`字段在此模式下被忽略
 - CS时序由框架自动管理
+- **重要**：硬件CS和软件CS通过`mode`字段的`SPI_MODE_HW_CS`位来区分，而不是通过`cs_pin == 0`来判断
 
 ### 3. 配置缓存
 
@@ -1041,6 +1241,36 @@ A:
 4. 使用逻辑分析仪查看SPI波形
 5. 检查配置参数（速度、模式等）
 
+### Q5: 如何正确配置硬件CS和软件CS？
+
+A: 
+- **软件CS**：在`mode`字段中不设置`SPI_MODE_HW_CS`位（或设置为`SPI_MODE_SW_CS`），并在`cs_pin`字段中指定GPIO引脚ID
+- **硬件CS**：在`mode`字段中设置`SPI_MODE_HW_CS`位，`cs_pin`字段在此模式下被忽略
+- **重要**：不要通过`cs_pin == 0`来判断硬件CS，因为Pin ID 0对应PA0，是一个有效的GPIO引脚
+
+**示例：**
+```c
+/* 软件CS配置 */
+.mode = SPI_MODE_0 | SPI_MODE_SW_CS | SPI_MODE_4WIRE | SPI_MODE_MSB,
+.cs_pin = GPIO_PIN_4,  /* 或使用GPIO Pin ID（如4表示PA4） */
+
+/* 硬件CS配置 */
+.mode = SPI_MODE_0 | SPI_MODE_HW_CS | SPI_MODE_4WIRE | SPI_MODE_MSB,
+.cs_pin = 0U,  /* 此字段被忽略 */
+```
+
+### Q6: 为什么使用BSP宏配置GPIO失败？
+
+A: 
+可能的原因：
+1. **宏定义不匹配**：确保使用LL库宏（`LL_GPIO_PIN_x`）而不是HAL库宏（`GPIO_PIN_x`）
+2. **GPIO时钟未使能**：确保在初始化GPIO之前，所有使用的GPIO端口时钟已使能
+3. **检查bsp_conf.h配置**：确保SPI引脚宏定义正确，且使用LL库宏
+
+**解决方案：**
+- 在`bsp_conf.h`中使用`LL_GPIO_PIN_x`宏
+- 在BSP初始化函数中显式使能所有使用的GPIO端口时钟
+
 ---
 
 ## 版本历史
@@ -1051,6 +1281,15 @@ A:
 - 支持裸机和RTOS环境
 - 编译器优化兼容
 - MISRA C合规
+
+### V1.1 (2025-01-XX)
+- **CS控制逻辑修复**：使用`SPI_MODE_HW_CS`标志位来区分硬件CS和软件CS，而不是通过`cs_pin == 0`判断
+- **模式字段增强**：`mode`字段改为位字段，支持组合多个配置标志（CPOL、CPHA、MSB/LSB、CS控制、线数模式）
+- **BSP层改进**：
+  - 添加GPIO时钟使能函数，确保所有使用的GPIO端口时钟正确使能
+  - 添加SPI最大速度限制检查（如STM32F1的18MHz限制）
+  - 使用LL库宏（`LL_GPIO_PIN_x`）替代HAL库宏（`GPIO_PIN_x`）
+- **文档更新**：更新所有示例代码，反映最新的CS控制逻辑和模式配置方式
 
 ---
 

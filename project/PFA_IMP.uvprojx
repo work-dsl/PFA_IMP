@@ -421,6 +421,13 @@
         </Group>
         <Group>
           <GroupName>modules</GroupName>
+          <Files>
+            <File>
+              <FileName>impedance.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\impedance.c</FilePath>
+            </File>
+          </Files>
         </Group>
         <Group>
           <GroupName>middlewares/SEGGER_RTT</GroupName>
@@ -459,6 +466,16 @@
               <FileName>i2c.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\devices\i2c.c</FilePath>
+            </File>
+            <File>
+              <FileName>ad5940.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\devices\ad5940.c</FilePath>
+            </File>
+            <File>
+              <FileName>ad5272.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\devices\ad5272.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -499,6 +516,11 @@
               <FileName>bsp_spi.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\drivers\bsp\stm32\hal\bsp_spi.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_i2c.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\drivers\bsp\stm32\hal\bsp_i2c.c</FilePath>
             </File>
           </Files>
         </Group>

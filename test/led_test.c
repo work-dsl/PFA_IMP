@@ -47,9 +47,9 @@ void led_test_init(void)
 void led_test_task(void)
 {   
     gpio_write(LED_PIN_ID, 0);
-    HAL_Delay(500);
+    HAL_Delay(100);
     gpio_write(LED_PIN_ID, 1);
-    HAL_Delay(500);
+    HAL_Delay(100);
 }
 
 /* Private functions ---------------------------------------------------------*/

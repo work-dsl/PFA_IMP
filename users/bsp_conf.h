@@ -94,6 +94,8 @@
  * ============================================================================
  */
 #define LED_PIN_ID                      (45)    /* PC13 */
+#define AD5940_RST_PIN_ID               (17)    /* PB1 */
+#define AD5940_GPIO0_INT                (36)    /* PC4 */
 
 /* ============================================================================
  * UART使能配置
@@ -169,14 +171,67 @@
  */
 #ifdef BSP_USING_SPI1
     #define BSP_SPI1_SCK_PORT              GPIOA
-    #define BSP_SPI1_SCK_PIN               GPIO_PIN_5
-    #define BSP_SPI1_MISO_PORT             GPIOD
-    #define BSP_SPI1_MISO_PIN              GPIO_PIN_6
+    #define BSP_SPI1_SCK_PIN               LL_GPIO_PIN_5
+    #define BSP_SPI1_MISO_PORT             GPIOA
+    #define BSP_SPI1_MISO_PIN              LL_GPIO_PIN_6
     #define BSP_SPI1_MOSI_PORT             GPIOA
-    #define BSP_SPI1_MOSI_PIN              GPIO_PIN_7
+    #define BSP_SPI1_MOSI_PIN              LL_GPIO_PIN_7
     #define BSP_SPI1_CS_PORT               GPIOA
-    #define BSP_SPI1_CS_PIN                GPIO_PIN_4
+    #define BSP_SPI1_CS_PIN                LL_GPIO_PIN_4
     #define BSP_SPI1_IRQ_PRIORITY          0
+#endif
+
+/* ============================================================================
+ * I2C使能配置
+ * ============================================================================
+ */
+/* #define BSP_USING_I2C1 */
+#define BSP_USING_I2C2
+
+/* ============================================================================
+ * I2C1 配置
+ * ============================================================================
+ */
+#ifdef BSP_USING_I2C1
+    #define BSP_I2C1_SCL_PORT              GPIOB
+    #define BSP_I2C1_SCL_PIN               LL_GPIO_PIN_6
+    #define BSP_I2C1_SDA_PORT              GPIOB
+    #define BSP_I2C1_SDA_PIN               LL_GPIO_PIN_7
+    #define BSP_I2C1_IRQ_PRIORITY          0
+    /* DMA配置（可选） */
+    /* #define BSP_I2C1_RX_USING_DMA */
+    /* #define BSP_I2C1_TX_USING_DMA */
+    #ifdef BSP_I2C1_RX_USING_DMA
+        #define BSP_I2C1_DMA_RX_INSTANCE   DMA1_Channel7
+        #define BSP_I2C1_DMA_RX_IRQn       DMA1_Channel7_IRQn
+    #endif
+    #ifdef BSP_I2C1_TX_USING_DMA
+        #define BSP_I2C1_DMA_TX_INSTANCE   DMA1_Channel6
+        #define BSP_I2C1_DMA_TX_IRQn       DMA1_Channel6_IRQn
+    #endif
+#endif
+
+/* ============================================================================
+ * I2C2 配置
+ * ============================================================================
+ */
+#ifdef BSP_USING_I2C2
+    #define BSP_I2C2_SCL_PORT              GPIOB
+    #define BSP_I2C2_SCL_PIN               LL_GPIO_PIN_10
+    #define BSP_I2C2_SDA_PORT              GPIOB
+    #define BSP_I2C2_SDA_PIN               LL_GPIO_PIN_11
+    #define BSP_I2C2_IRQ_PRIORITY          0
+    /* DMA配置（可选） */
+    /* #define BSP_I2C2_RX_USING_DMA */
+    /* #define BSP_I2C2_TX_USING_DMA */
+    #ifdef BSP_I2C2_RX_USING_DMA
+        #define BSP_I2C2_DMA_RX_INSTANCE   DMA1_Channel5
+        #define BSP_I2C2_DMA_RX_IRQn       DMA1_Channel5_IRQn
+    #endif
+    #ifdef BSP_I2C2_TX_USING_DMA
+        #define BSP_I2C2_DMA_TX_INSTANCE   DMA1_Channel4
+        #define BSP_I2C2_DMA_TX_IRQn       DMA1_Channel4_IRQn
+    #endif
 #endif
 
 /* Exported typedef ----------------------------------------------------------*/
