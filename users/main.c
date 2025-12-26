@@ -29,6 +29,7 @@
 #include "ad5940.h"
 #include "ad5272.h"
 #include "gpio.h"
+#include "stimer.h"
 
 #define  LOG_TAG             "main"
 #define  LOG_LVL             4
@@ -132,7 +133,7 @@ void AD5940ImpedanceStructInit(void)
 	pImpedanceCfg->NswitchSel = SWN_SE0;
 	pImpedanceCfg->TswitchSel = SWT_SE0LOAD;
 	/* The dummy sensor is as low as 5kOhm. We need to make sure RTIA is small enough that HSTIA won't be saturated. */
-	pImpedanceCfg->HstiaRtiaSel = HSTIARTIA_1K;
+	pImpedanceCfg->HstiaRtiaSel = HSTIARTIA_5K;
 	
 	/* Configure the sweep function. */
 	pImpedanceCfg->SweepCfg.SweepEn = bFALSE;
@@ -148,25 +149,13 @@ void AD5940ImpedanceStructInit(void)
   pImpedanceCfg->DftSrc = DFTSRC_SINC3;
 }
 
+uint32_t tick_time = 0;
+
 void AD5940_Main(void)
 {
-  uint32_t temp;  
-  AD5940PlatformCfg();
-  AD5940ImpedanceStructInit();
-  
-  AppIMPInit(AppBuff, APPBUFF_SIZE);    /* Initialize IMP application. Provide a buffer, which is used to store sequencer commands */
-  AppIMPCtrl(IMPCTRL_START, 0);          /* Control IMP measurement to start. Second parameter has no meaning with this command. */
- 
-  while(1)
-  {
-    if(AD5940_GetMCUIntFlag())
-    {
-      AD5940_ClrMCUIntFlag();
-      temp = APPBUFF_SIZE;
-      AppIMPISR(AppBuff, &temp);
-      ImpedanceShowResult(AppBuff, temp);
-    }
-  }
+    
+
+
 }
 
 static ad5272_dev_t ad5272_dev;  /* AD5272设备实例 */
@@ -198,29 +187,39 @@ static int ad5272_test_init(void)
 static void ad5272_test_basic(void)
 {
     int ret = 0;
-    uint16_t position = 0U;
+    uint16_t position = 102U;
     uint8_t status = 0U;
     
     LOG_I("=== AD5272 Basic Test ===");
     
-    /* 测试1: 读取当前阻值位置 */
-    ret = ad5272_get_resistance(&ad5272_dev, &position);
+    /* 设置阻值位置 */
+    ret = ad5272_set_RDAC(&ad5272_dev, position);
     if (ret == 0) {
-        LOG_I("Test 1 PASS: Read resistance position = %d", position);
+        LOG_I("Test 1 PASS: Set resistance position = %d", position);
     } else {
-        LOG_E("Test 1 FAIL: Read resistance failed: %d", ret);
+        LOG_E("Test 1 FAIL: Set resistance failed: %d", ret);
     }
     
-    /* 测试2: 读取状态寄存器 */
-    ret = ad5272_read_status(&ad5272_dev, &status);
+    /* 读取阻值位置 */
+    ret = ad5272_get_RDAC(&ad5272_dev, &position);
     if (ret == 0) {
-        LOG_I("Test 2 PASS: Read status = 0x%02X", status);
+        LOG_I("Test 2 PASS: Read resistance position = %d", position);
     } else {
-        LOG_E("Test 2 FAIL: Read status failed: %d", ret);
+        LOG_E("Test 2 FAIL: Read resistance failed: %d", ret);
     }
 }
 
 /*------------------------------ application ----------------------------------*/
+
+stimer_t ris_timer;
+uint16_t ris_position = 0;
+
+void ris_timer_callback(void* arg)
+{
+    ris_position += 100;
+    ad5272_set_RDAC(&ad5272_dev, ris_position);
+}
+
 /**
  * @brief  Main program
  * @param  None
@@ -228,25 +227,45 @@ static void ad5272_test_basic(void)
  */
 int main(void)
 {
+    uint32_t temp;  
+    
     /* 底层驱动初始化 */
     board_init();
 
     /* 测试初始化 */
     led_test_init();
     serial_test_init();
+    
+//    stimer_init(HAL_GetTick);
+//    stimer_create(&ris_timer, 20000, STIMER_AUTO_RELOAD, ris_timer_callback, (void*)&ris_timer);
+//    stimer_start(&ris_timer);
+    
+    /* IMP 继电器控制 */
     gpio_set_mode(3, PIN_OUTPUT_PP, PIN_PULL_UP);
     gpio_write(3, 0);
+    
     spi_test_init();
     spi_test_task();
     AD5940_MCUResourceInit(0);
+    AD5940PlatformCfg();
+    AD5940ImpedanceStructInit();
+  
+    AppIMPInit(AppBuff, APPBUFF_SIZE);    /* Initialize IMP application. Provide a buffer, which is used to store sequencer commands */
+    AppIMPCtrl(IMPCTRL_START, 0);          /* Control IMP measurement to start. Second parameter has no meaning with this command. */
+    
     ad5272_test_init();
     ad5272_test_basic();
-    AD5940_Main();
     
     while (1)
     {
-        led_test_task();
-        serial_test_task();
+//        stimer_service();
+        if(AD5940_GetMCUIntFlag())
+        {
+          AD5940_ClrMCUIntFlag();
+          temp = APPBUFF_SIZE;
+          AppIMPISR(AppBuff, &temp);
+          ImpedanceShowResult(AppBuff, temp);
+        }
     }
 }
 

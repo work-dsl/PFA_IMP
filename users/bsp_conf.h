@@ -217,21 +217,10 @@
  */
 #ifdef BSP_USING_I2C2
     #define BSP_I2C2_SCL_PORT              GPIOB
-    #define BSP_I2C2_SCL_PIN               LL_GPIO_PIN_10
+    #define BSP_I2C2_SCL_PIN               GPIO_PIN_10
     #define BSP_I2C2_SDA_PORT              GPIOB
-    #define BSP_I2C2_SDA_PIN               LL_GPIO_PIN_11
+    #define BSP_I2C2_SDA_PIN               GPIO_PIN_11
     #define BSP_I2C2_IRQ_PRIORITY          0
-    /* DMA配置（可选） */
-    /* #define BSP_I2C2_RX_USING_DMA */
-    /* #define BSP_I2C2_TX_USING_DMA */
-    #ifdef BSP_I2C2_RX_USING_DMA
-        #define BSP_I2C2_DMA_RX_INSTANCE   DMA1_Channel5
-        #define BSP_I2C2_DMA_RX_IRQn       DMA1_Channel5_IRQn
-    #endif
-    #ifdef BSP_I2C2_TX_USING_DMA
-        #define BSP_I2C2_DMA_TX_INSTANCE   DMA1_Channel4
-        #define BSP_I2C2_DMA_TX_IRQn       DMA1_Channel4_IRQn
-    #endif
 #endif
 
 /* Exported typedef ----------------------------------------------------------*/

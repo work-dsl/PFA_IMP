@@ -52,7 +52,7 @@ AppIMPCfg_Type AppIMPCfg =
   .ExcitBufGain = EXCITBUFGAIN_2,
   .HsDacGain = HSDACGAIN_1,
   .HsDacUpdateRate = 7,
-  .DacVoltPP = 300.0,
+  .DacVoltPP = 600.0,
   .BiasVolt = -0.0f,
 
   .SinFreq = 50000.0, /* 50000Hz */

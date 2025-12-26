@@ -477,6 +477,11 @@
               <FileType>1</FileType>
               <FilePath>..\devices\ad5272.c</FilePath>
             </File>
+            <File>
+              <FileName>tca6424.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\devices\tca6424.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
