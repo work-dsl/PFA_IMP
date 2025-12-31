@@ -418,14 +418,56 @@
         </Group>
         <Group>
           <GroupName>applications</GroupName>
+          <Files>
+            <File>
+              <FileName>cmd_handler.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\applications\cmd_handler.c</FilePath>
+            </File>
+            <File>
+              <FileName>custom_slave.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\applications\custom_slave.c</FilePath>
+            </File>
+            <File>
+              <FileName>custom_host.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\applications\custom_host.c</FilePath>
+            </File>
+            <File>
+              <FileName>major_logic.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\applications\major_logic.c</FilePath>
+            </File>
+          </Files>
         </Group>
         <Group>
           <GroupName>modules</GroupName>
           <Files>
             <File>
-              <FileName>impedance.c</FileName>
+              <FileName>data_mgmt.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\modules\impedance.c</FilePath>
+              <FilePath>..\modules\data_mgmt.c</FilePath>
+            </File>
+            <File>
+              <FileName>safety.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\safety.c</FilePath>
+            </File>
+            <File>
+              <FileName>port_ctrl.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\port_ctrl.c</FilePath>
+            </File>
+            <File>
+              <FileName>loop_imp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\loop_imp.c</FilePath>
+            </File>
+            <File>
+              <FileName>my_imp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\my_imp.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -436,6 +478,21 @@
               <FileName>SEGGER_RTT.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\middlewares\RTT\SEGGER_RTT.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>middlewares/proto</GroupName>
+          <Files>
+            <File>
+              <FileName>proto.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\middlewares\proto\proto.c</FilePath>
+            </File>
+            <File>
+              <FileName>proto_custom.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\middlewares\proto\proto_custom.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -481,6 +538,11 @@
               <FileName>tca6424.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\devices\tca6424.c</FilePath>
+            </File>
+            <File>
+              <FileName>mtd_core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\devices\mtd_core.c</FilePath>
             </File>
           </Files>
         </Group>

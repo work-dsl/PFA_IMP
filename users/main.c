@@ -21,204 +21,32 @@
 /*------------------------------ include --------------------------------------*/
 
 #include "board.h"
-#include "Impedance.h"
-
-#include "serial_test.h"
-#include "led_test.h"
-#include "spi_test.h"
-#include "ad5940.h"
-#include "ad5272.h"
-#include "gpio.h"
+#include "major_logic.h"
 #include "stimer.h"
+#include "safety.h"
+#include "custom_slave.h"
+
+/* 后续可能需要删除的头文件 */
+#include "loop_imp.h"
+#include "my_imp.h"
 
 #define  LOG_TAG             "main"
 #define  LOG_LVL             4
 #include "log.h"
 
 /*------------------------------ Macro definition -----------------------------*/
+#define LOW_PIN   (TCA6424_PIN(1, 3))
 
 /*------------------------------ typedef definition ---------------------------*/
 
 
 /*------------------------------ variables prototypes -------------------------*/
 
+
+
 /*------------------------------ function prototypes --------------------------*/
 
-/**
-   User could configure following parameters
-**/
-
-#define APPBUFF_SIZE 512
-uint32_t AppBuff[APPBUFF_SIZE];
-
-int32_t ImpedanceShowResult(uint32_t *pData, uint32_t DataCount)
-{
-  float freq;
-
-  fImpPol_Type *pImp = (fImpPol_Type*)pData;
-  AppIMPCtrl(IMPCTRL_GETFREQ, &freq);
-
-  printf("Freq:%.2f ", freq);
-  /*Process data*/
-  for(int i=0;i<DataCount;i++)
-  {
-    printf("RzMag: %f Ohm , RzPhase: %f \n",pImp[i].Magnitude,pImp[i].Phase*180/MATH_PI);
-  }
-  return 0;
-}
-
-static int32_t AD5940PlatformCfg(void)
-{
-  CLKCfg_Type clk_cfg;
-  FIFOCfg_Type fifo_cfg;
-  AGPIOCfg_Type gpio_cfg;
-
-  /* Use hardware reset */
-  AD5940_HWReset();
-  AD5940_Initialize();
-  /* Platform configuration */
-  /* Step1. Configure clock */
-  clk_cfg.ADCClkDiv = ADCCLKDIV_1;
-  clk_cfg.ADCCLkSrc = ADCCLKSRC_HFOSC;
-  clk_cfg.SysClkDiv = SYSCLKDIV_1;
-  clk_cfg.SysClkSrc = SYSCLKSRC_HFOSC;
-  clk_cfg.HfOSC32MHzMode = bFALSE;
-  clk_cfg.HFOSCEn = bTRUE;
-  clk_cfg.HFXTALEn = bFALSE;
-  clk_cfg.LFOSCEn = bTRUE;
-  AD5940_CLKCfg(&clk_cfg);
-  /* Step2. Configure FIFO and Sequencer*/
-  fifo_cfg.FIFOEn = bFALSE;
-  fifo_cfg.FIFOMode = FIFOMODE_FIFO;
-  fifo_cfg.FIFOSize = FIFOSIZE_4KB;                       /* 4kB for FIFO, The reset 2kB for sequencer */
-  fifo_cfg.FIFOSrc = FIFOSRC_DFT;
-  fifo_cfg.FIFOThresh = 4;//AppIMPCfg.FifoThresh;        /* DFT result. One pair for RCAL, another for Rz. One DFT result have real part and imaginary part */
-  AD5940_FIFOCfg(&fifo_cfg);
-  fifo_cfg.FIFOEn = bTRUE;
-  AD5940_FIFOCfg(&fifo_cfg);
-  
-  /* Step3. Interrupt controller */
-  AD5940_INTCCfg(AFEINTC_1, AFEINTSRC_ALLINT, bTRUE);   /* Enable all interrupt in INTC1, so we can check INTC flags */
-  AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
-  AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE); 
-  AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
-  /* Step4: Reconfigure GPIO */
-  gpio_cfg.FuncSet = GP0_INT|GP1_SLEEP|GP2_SYNC;
-  gpio_cfg.InputEnSet = 0;
-  gpio_cfg.OutputEnSet = AGPIO_Pin1|AGPIO_Pin2;
-  gpio_cfg.OutVal = 0;
-  gpio_cfg.PullEnSet = 0;
-  AD5940_AGPIOCfg(&gpio_cfg);
-  AD5940_SleepKeyCtrlS(SLPKEY_UNLOCK);  /* Allow AFE to enter sleep mode. */
-  return 0;
-}
-
-void AD5940ImpedanceStructInit(void)
-{
-  AppIMPCfg_Type *pImpedanceCfg;
-  
-  AppIMPGetCfg(&pImpedanceCfg);
-  /* Step1: configure initialization sequence Info */
-  pImpedanceCfg->SeqStartAddr = 0;
-  pImpedanceCfg->MaxSeqLen = 512; /* @todo add checker in function */
-
-  pImpedanceCfg->RcalVal = 10000.0;
-  pImpedanceCfg->SinFreq = 50000.0;
-  pImpedanceCfg->FifoThresh = 4;
-	
-	/* Set switch matrix to onboard(EVAL-AD5940ELECZ) dummy sensor. */
-	/* Note the RCAL0 resistor is 10kOhm. */
-	pImpedanceCfg->DswitchSel = SWD_CE0;
-	pImpedanceCfg->PswitchSel = SWP_RE0;
-	pImpedanceCfg->NswitchSel = SWN_SE0;
-	pImpedanceCfg->TswitchSel = SWT_SE0LOAD;
-	/* The dummy sensor is as low as 5kOhm. We need to make sure RTIA is small enough that HSTIA won't be saturated. */
-	pImpedanceCfg->HstiaRtiaSel = HSTIARTIA_5K;
-	
-	/* Configure the sweep function. */
-	pImpedanceCfg->SweepCfg.SweepEn = bFALSE;
-	pImpedanceCfg->SweepCfg.SweepStart = 100.0f;	/* Start from 1kHz */
-	pImpedanceCfg->SweepCfg.SweepStop = 100e3f;		/* Stop at 100kHz */
-	pImpedanceCfg->SweepCfg.SweepPoints = 101;		/* Points is 101 */
-	pImpedanceCfg->SweepCfg.SweepLog = bTRUE;
-	/* Configure Power Mode. Use HP mode if frequency is higher than 80kHz. */
-	pImpedanceCfg->PwrMod = AFEPWR_HP;
-	/* Configure filters if necessary */
-	pImpedanceCfg->ADCSinc3Osr = ADCSINC3OSR_2;		/* Sample rate is 800kSPS/2 = 400kSPS */
-  pImpedanceCfg->DftNum = DFTNUM_16384;
-  pImpedanceCfg->DftSrc = DFTSRC_SINC3;
-}
-
-uint32_t tick_time = 0;
-
-void AD5940_Main(void)
-{
-    
-
-
-}
-
-static ad5272_dev_t ad5272_dev;  /* AD5272设备实例 */
-
-/**
- * @brief AD5272测试初始化
- * @return 0成功，负数错误码
- */
-static int ad5272_test_init(void)
-{
-    int ret = 0;
-    
-    LOG_I("=== AD5272 Test Init ===");
-
-    /* 初始化AD5272设备 */
-    ret = ad5272_init(&ad5272_dev, AD5272_DEFAULT_I2C_ADDR, AD5272_DEFAULT_ADAPTER);
-    if (ret != 0) {
-        LOG_E("AD5272 init failed: %d", ret);
-        return ret;
-    }
-    
-    LOG_I("AD5272 initialized successfully");
-    return 0;
-}
-
-/**
- * @brief 基本功能测试
- */
-static void ad5272_test_basic(void)
-{
-    int ret = 0;
-    uint16_t position = 102U;
-    uint8_t status = 0U;
-    
-    LOG_I("=== AD5272 Basic Test ===");
-    
-    /* 设置阻值位置 */
-    ret = ad5272_set_RDAC(&ad5272_dev, position);
-    if (ret == 0) {
-        LOG_I("Test 1 PASS: Set resistance position = %d", position);
-    } else {
-        LOG_E("Test 1 FAIL: Set resistance failed: %d", ret);
-    }
-    
-    /* 读取阻值位置 */
-    ret = ad5272_get_RDAC(&ad5272_dev, &position);
-    if (ret == 0) {
-        LOG_I("Test 2 PASS: Read resistance position = %d", position);
-    } else {
-        LOG_E("Test 2 FAIL: Read resistance failed: %d", ret);
-    }
-}
-
 /*------------------------------ application ----------------------------------*/
-
-stimer_t ris_timer;
-uint16_t ris_position = 0;
-
-void ris_timer_callback(void* arg)
-{
-    ris_position += 100;
-    ad5272_set_RDAC(&ad5272_dev, ris_position);
-}
 
 /**
  * @brief  Main program
@@ -227,45 +55,61 @@ void ris_timer_callback(void* arg)
  */
 int main(void)
 {
-    uint32_t temp;  
+    imp2w_cfg_t cfg;
+    imp2w_result_t out;
     
     /* 底层驱动初始化 */
     board_init();
+    
+    /* 系统服务初始化 */
+    stimer_init(HAL_GetTick);
+    
+    /* 协议应用层初始化 */
+    slave_proto_init();
+    
+    /* 应用主逻辑协调器初始化 */
+    major_logic_init();
+    
+    /* 安全模块初始化 */
+    safety_init();
+    
+    memset(&cfg, 0, sizeof(cfg));
 
-    /* 测试初始化 */
-    led_test_init();
-    serial_test_init();
+    cfg.sys_clk_hz = 16000000.0f;
+    cfg.freq_hz    = 50000.0f;
+
+    cfg.rcal_ohm     = 3000.0f;   /* 典型 */
+    cfg.excit_vpp_mv = 200.0f;    /* 30Ω也不容易饱和；500Ω信噪可通过avg提升 */
+
+    cfg.hstia_rtia_sel = HSTIARTIA_10K;
+    cfg.hstia_ctia     = 16;      /* 8~16起步 */
+    cfg.adc_pga         = ADCPGA_1P5;
+    cfg.avg_n = 64;               /* 64次平均很稳 */
+
+    cfg.open_z_min_ohm = 2000.0f; /* 超出即视为超量程/开路 */
+    cfg.open_sigma_k   = 5.0f;    /* open阈值=mean+5*std */
+
+    cfg.enable_short_comp = 0;
+    cfg.enable_open_comp  = 0;
     
-//    stimer_init(HAL_GetTick);
-//    stimer_create(&ris_timer, 20000, STIMER_AUTO_RELOAD, ris_timer_callback, (void*)&ris_timer);
-//    stimer_start(&ris_timer);
-    
-    /* IMP 继电器控制 */
-    gpio_set_mode(3, PIN_OUTPUT_PP, PIN_PULL_UP);
-    gpio_write(3, 0);
-    
-    spi_test_init();
-    spi_test_task();
-    AD5940_MCUResourceInit(0);
-    AD5940PlatformCfg();
-    AD5940ImpedanceStructInit();
-  
-    AppIMPInit(AppBuff, APPBUFF_SIZE);    /* Initialize IMP application. Provide a buffer, which is used to store sequencer commands */
-    AppIMPCtrl(IMPCTRL_START, 0);          /* Control IMP measurement to start. Second parameter has no meaning with this command. */
-    
-    ad5272_test_init();
-    ad5272_test_basic();
+//    IMP2W_50K_Init(&cfg);
+//    IMP2W_50K_CalibrateRcal(16);
+
+    AppIMPInit();                   /* Initialize IMP application. Provide a buffer, which is used to store sequencer commands */
+    AppIMPCtrl(IMPCTRL_START, 0);   /* Control IMP measurement to start. Second parameter has no meaning with this command. */
     
     while (1)
     {
-//        stimer_service();
-        if(AD5940_GetMCUIntFlag())
-        {
-          AD5940_ClrMCUIntFlag();
-          temp = APPBUFF_SIZE;
-          AppIMPISR(AppBuff, &temp);
-          ImpedanceShowResult(AppBuff, temp);
-        }
+        safety_task();          /* 安全任务 */
+        stimer_service();       /* 软件定时器服务 */
+        slave_proto_task();     /* 协议处理任务 */
+        major_logic_task();     /* 主逻辑协调任务 */
+        AppImpTask();
+//        imp2w_status_t st = IMP2W_50K_Measure(&out);
+//        if(st == IMP2W_OK) {
+//            LOG_D("z_re=%f z_im=%f z_mag=%f phase=%f", out.z_re, out.z_im, out.z_mag, out.z_phase_rad);
+//        }
+//        HAL_Delay(10);
     }
 }
 

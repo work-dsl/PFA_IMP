@@ -45,7 +45,7 @@ static uint8_t rx_buffer[SPI_TEST_BUFFER_SIZE];
 
 /* 定义设备 */
 static struct spi_device my_spi_device = {
-    .name = "my_device",
+    .name = "ad5940",
     .controller = NULL,
     .max_speed_hz = 10000000U,      /* 16MHz */
     .chip_select = 0U,              /* 硬件CS编号 */

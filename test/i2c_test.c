@@ -46,8 +46,10 @@
 
 /* Private variables ---------------------------------------------------------*/
 static struct i2c_adapter *test_adapter = NULL;
-static struct i2c_client *test_client_7bit = NULL;
-static struct i2c_client *test_client_10bit = NULL;
+static uint16_t test_addr_7bit = I2C_TEST_7BIT_ADDR;
+static uint16_t test_addr_10bit = I2C_TEST_10BIT_ADDR;
+static uint16_t test_flags_7bit = 0U;
+static uint16_t test_flags_10bit = I2C_M_TEN;
 
 /* Test data buffers (static allocation) */
 static uint8_t test_tx_buffer[I2C_TEST_DATA_SIZE];
@@ -106,17 +108,11 @@ static int i2c_test_setup_adapter(void)
  */
 static int i2c_test_teardown_adapter(void)
 {
-    if (test_client_7bit != NULL) {
-        (void)i2c_del_client(test_client_7bit);
-        test_client_7bit = NULL;
-    }
-    
-    if (test_client_10bit != NULL) {
-        (void)i2c_del_client(test_client_10bit);
-        test_client_10bit = NULL;
-    }
-    
     test_adapter = NULL;
+    test_addr_7bit = 0U;
+    test_addr_10bit = 0U;
+    test_flags_7bit = 0U;
+    test_flags_10bit = 0U;
     
     return 0;
 }
@@ -138,21 +134,8 @@ int i2c_test_init(void)
         return ret;
     }
     
-    /* Create test clients */
-    test_client_7bit = i2c_new_client("test_7bit", 
-                                      I2C_TEST_ADAPTER_NAME,
-                                      I2C_TEST_7BIT_ADDR,
-                                      0U);
-    if (test_client_7bit == NULL) {
-        (void)i2c_test_teardown_adapter();
-        return -ENODEV;
-    }
-    
-    test_client_10bit = i2c_new_client("test_10bit",
-                                       I2C_TEST_ADAPTER_NAME,
-                                       I2C_TEST_10BIT_ADDR,
-                                       I2C_M_TEN);
-    if (test_client_10bit == NULL) {
+    /* 验证适配器是否找到 */
+    if (test_adapter == NULL) {
         (void)i2c_test_teardown_adapter();
         return -ENODEV;
     }
@@ -370,7 +353,7 @@ int i2c_test_7bit_addr(void)
     int ret = 0;
     size_t i = 0U;
     
-    if (test_client_7bit == NULL) {
+    if (test_adapter == NULL) {
         return -ENODEV;
     }
     
@@ -378,13 +361,15 @@ int i2c_test_7bit_addr(void)
     i2c_test_init_buffers();
     
     /* Write data */
-    ret = i2c_master_send(test_client_7bit, test_tx_buffer, I2C_TEST_DATA_SIZE);
+    ret = i2c_master_send(test_adapter, test_addr_7bit, test_flags_7bit, 
+                          test_tx_buffer, I2C_TEST_DATA_SIZE);
     if (ret < 0) {
         return ret;
     }
     
     /* Read data */
-    ret = i2c_master_recv(test_client_7bit, test_rx_buffer, I2C_TEST_DATA_SIZE);
+    ret = i2c_master_recv(test_adapter, test_addr_7bit, test_flags_7bit,
+                          test_rx_buffer, I2C_TEST_DATA_SIZE);
     if (ret < 0) {
         return ret;
     }
@@ -406,27 +391,23 @@ int i2c_test_10bit_addr(void)
 {
     int ret;
     
-    if (test_client_10bit == NULL) {
+    if (test_adapter == NULL) {
         return -ENODEV;
-    }
-    
-    /* Check if adapter supports 10-bit addressing */
-    if ((test_adapter == NULL) || 
-        ((test_adapter->algo->functionality & I2C_FUNC_10BIT_ADDR) == 0U)) {
-        return -ENOTSUPP;
     }
     
     /* Initialize test data */
     i2c_test_init_buffers();
     
     /* Write data */
-    ret = i2c_master_send(test_client_10bit, test_tx_buffer, I2C_TEST_DATA_SIZE);
+    ret = i2c_master_send(test_adapter, test_addr_10bit, test_flags_10bit,
+                          test_tx_buffer, I2C_TEST_DATA_SIZE);
     if (ret < 0) {
         return ret;
     }
     
     /* Read data */
-    ret = i2c_master_recv(test_client_10bit, test_rx_buffer, I2C_TEST_DATA_SIZE);
+    ret = i2c_master_recv(test_adapter, test_addr_10bit, test_flags_10bit,
+                          test_rx_buffer, I2C_TEST_DATA_SIZE);
     if (ret < 0) {
         return ret;
     }
@@ -442,27 +423,23 @@ int i2c_test_dma_transfer(void)
 {
     int ret;
     
-    if (test_client_7bit == NULL) {
+    if (test_adapter == NULL) {
         return -ENODEV;
-    }
-    
-    /* Check if DMA is supported */
-    if ((test_adapter == NULL) || (test_adapter->dma_supported == 0U)) {
-        /* DMA not supported - skip test */
-        return 0;
     }
     
     /* Initialize test data */
     i2c_test_init_buffers();
     
     /* Write data (should use DMA if length exceeds threshold) */
-    ret = i2c_master_send(test_client_7bit, test_tx_buffer, I2C_TEST_DATA_SIZE);
+    ret = i2c_master_send(test_adapter, test_addr_7bit, test_flags_7bit,
+                          test_tx_buffer, I2C_TEST_DATA_SIZE);
     if (ret < 0) {
         return ret;
     }
     
     /* Read data (should use DMA if length exceeds threshold) */
-    ret = i2c_master_recv(test_client_7bit, test_rx_buffer, I2C_TEST_DATA_SIZE);
+    ret = i2c_master_recv(test_adapter, test_addr_7bit, test_flags_7bit,
+                          test_rx_buffer, I2C_TEST_DATA_SIZE);
     if (ret < 0) {
         return ret;
     }
@@ -477,28 +454,29 @@ int i2c_test_dma_transfer(void)
 int i2c_test_error_handling(void)
 {
     int ret;
-    struct i2c_client *invalid_client;
     
     /* Test invalid parameters */
-    ret = i2c_master_send(NULL, test_tx_buffer, I2C_TEST_DATA_SIZE);
+    ret = i2c_master_send(NULL, test_addr_7bit, test_flags_7bit, 
+                          test_tx_buffer, I2C_TEST_DATA_SIZE);
     if (ret != -EINVAL) {
         return -1;
     }
     
-    ret = i2c_master_send(test_client_7bit, NULL, I2C_TEST_DATA_SIZE);
+    ret = i2c_master_send(test_adapter, test_addr_7bit, test_flags_7bit, 
+                          NULL, I2C_TEST_DATA_SIZE);
     if (ret != -EINVAL) {
         return -1;
     }
     
-    ret = i2c_master_send(test_client_7bit, test_tx_buffer, 0U);
+    ret = i2c_master_send(test_adapter, test_addr_7bit, test_flags_7bit, 
+                          test_tx_buffer, 0U);
     if (ret != -EINVAL) {
         return -1;
     }
     
-    /* Test invalid address */
-    invalid_client = i2c_new_client("invalid", I2C_TEST_ADAPTER_NAME, 0x00U, 0U);
-    if (invalid_client != NULL) {
-        (void)i2c_del_client(invalid_client);
+    /* Test invalid address (0x00 is reserved) */
+    ret = i2c_master_send(test_adapter, 0x00U, 0U, test_tx_buffer, 1U);
+    if (ret != -EINVAL) {
         return -1;  /* Should have failed */
     }
     
@@ -607,7 +585,7 @@ int i2c_test_long_running_stability(void)
     uint32_t i = 0U;
     int ret = 0;
     
-    if (test_client_7bit == NULL) {
+    if (test_adapter == NULL) {
         return -ENODEV;
     }
     
