@@ -63,10 +63,14 @@ void cmd_handle_upload_mode(const uint8_t *payload, uint16_t len, cmd_result_t *
 void cmd_handle_status_upload(const uint8_t *payload, uint16_t len, cmd_result_t *result);
 
 void cmd_handle_select_catheter(const uint8_t *payload, uint16_t len, cmd_result_t *result);
-void cmd_handle_get_catheter(const uint8_t *payload, uint16_t len, cmd_result_t *result);
+void cmd_handle_get_catheter_info(const uint8_t *payload, uint16_t len, cmd_result_t *result);
 void cmd_handle_set_work_mode(const uint8_t *payload, uint16_t len, cmd_result_t *result);
 void cmd_handle_get_work_mode(const uint8_t *payload, uint16_t len, cmd_result_t *result);
 void cmd_handle_port_ctrl(const uint8_t *payload, uint16_t len, cmd_result_t *result);
+void cmd_handle_get_loop_imp_data(const uint8_t *payload, uint16_t len, cmd_result_t *result);
+void cmd_handle_get_contact_imp_data(const uint8_t *payload, uint16_t len, cmd_result_t *result);
+
+uint8_t cmd_get_loop_imp_upload_enable(void);
 
 #ifdef __cplusplus
 }

@@ -55,7 +55,6 @@ void safety_init(void)
     gpio_set_mode(LED_PIN_ID, PIN_OUTPUT_PP, PIN_PULL_UP);
     gpio_write(LED_PIN_ID, 1);
 
-
     stimer_create(&led_timer, 800, STIMER_AUTO_RELOAD, led_timer_callback, (void*)&led_timer);
     stimer_start(&led_timer);
 

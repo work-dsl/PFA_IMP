@@ -25,7 +25,7 @@
 #include "cmd_handler.h"
 
 #define  LOG_TAG             "custom_slave"
-#define  LOG_LVL             4
+#define  LOG_LVL             2
 #include "log.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -73,7 +73,7 @@ int slave_proto_init(void)
 {
     int ret;
 
-    port = serial_find("uart3");
+    port = serial_find("uart1");
     if (port == NULL) {
         LOG_D("Failed to find uart1\r\n");
         return -ENODEV;
@@ -210,18 +210,18 @@ void slave_process_frame(const uint8_t *frame, uint16_t len)
     * [0..1]  = LEN（长度字段，小端）
     * [2]     = PRODUCT（产品地址，PRODUCT_ADDR）
     * [3]     = CMD（命令码）
-    * [4]     = MOD（模块地址，MODULE_ADDR）
+    * [4]     = BOARD（板卡地址，BOARD_ADDR）
     * [5..]   = DATA（数据载荷，如果有）
     */
-    /* 最小payload长度：LEN(2) + DEV(1) + CMD(1) + MOD(1) = 5字节 */
+    /* 最小payload长度：LEN(2) + PRODUCT(1) + CMD(1) + BOARD(1) = 5字节 */
     if (len < 5U) {
         LOG_I("Frame too short: %d", (int)len);
         return;
     }
 
-    uint8_t product = frame[2];      /* 产品地址 */
+    uint8_t product = frame[2]; /* 产品地址 */
     uint8_t cmd = frame[3];
-    uint8_t mod = frame[4];      /* 模块地址 */
+    uint8_t mod = frame[4];     /* 板卡地址 */
 
     /* 地址检查：检查产品地址和模块地址，不匹配则需要应答错误 */
     if (product != PRODUCT_ADDR) {
@@ -235,18 +235,18 @@ void slave_process_frame(const uint8_t *frame, uint16_t len)
         return;
     }
 
-    if (mod != MODULE_ADDR) {
-        LOG_D("Module address mismatch: expected=0x%02X, got=0x%02X",
-              MODULE_ADDR, mod);
-        /* 发送模块地址错误应答 */
+    if (mod != SELF_BOARD_ADDR) {
+        LOG_D("Board address mismatch: expected=0x%02X, got=0x%02X",
+              SELF_BOARD_ADDR, mod);
+        /* 发送板卡地址错误应答 */
         cmd_result_t result;
-        result.ack_code = ACK_ERR_MODULE_ADDR;
+        result.ack_code = ACK_ERR_BOARD_ADDR;
         result.resp_len = 0;
         slave_send_response_frame(cmd, &result);
         return;
     }
 
-    /* 计算数据载荷长度 = payload总长 - 固定5字节（LEN+DEV+CMD+MOD） */
+    /* 计算数据载荷长度 = payload总长 - 固定5字节（LEN+PRODUCT+CMD+BOARD） */
     uint16_t payload_len = (uint16_t)(len - 5U);
     const uint8_t *payload = &frame[5];
 
@@ -320,8 +320,35 @@ void slave_process_frame(const uint8_t *frame, uint16_t len)
         cmd_handle_status_upload(payload, payload_len, &result);
         /* 状态上传是非应答型命令，不需要回复 */
         break;
-
     /* 专有命令 */
+    case CMD_SELECT_CATHETER:
+        cmd_handle_select_catheter(payload, payload_len, &result);
+        slave_send_response_frame(CMD_SELECT_CATHETER, &result);
+        break;
+    case CMD_GET_CATHETER_INFO:
+        cmd_handle_get_catheter_info(payload, payload_len, &result);
+        slave_send_response_frame(CMD_GET_CATHETER_INFO, &result);
+        break;
+    case CMD_SET_WORK_MODE:
+        cmd_handle_set_work_mode(payload, payload_len, &result);
+        slave_send_response_frame(CMD_SET_WORK_MODE, &result);
+        break;
+    case CMD_GET_WORK_MODE:
+        cmd_handle_get_work_mode(payload, payload_len, &result);
+        slave_send_response_frame(CMD_GET_WORK_MODE, &result);
+        break;
+    case CMD_PORT_CTRL:
+        cmd_handle_port_ctrl(payload, payload_len, &result);
+        slave_send_response_frame(CMD_PORT_CTRL, &result);
+        break;
+    case CMD_GET_LOOP_IMP_DATA:
+        cmd_handle_get_loop_imp_data(payload, payload_len, &result);
+        slave_send_response_frame(CMD_GET_LOOP_IMP_DATA, &result);
+        break;
+    case CMD_GET_CONTACT_IMP_DATA:
+        cmd_handle_get_contact_imp_data(payload, payload_len, &result);
+        slave_send_response_frame(CMD_GET_CONTACT_IMP_DATA, &result);
+        break;
     
     default:
         /* 未知命令 */
@@ -352,7 +379,7 @@ static inline int slave_build_frame(uint8_t *out, uint16_t out_size,
     return custom_build_frame(out, out_size,
                              PRODUCT_ADDR,      /* 使用固定产品地址 */
                              cmd,
-                             MODULE_ADDR,      /* 使用固定模块地址 */
+                             SELF_BOARD_ADDR,        /* 使用固定板卡地址 */
                              data, data_len);
 }
 
@@ -373,9 +400,9 @@ static inline int slave_build_response_frame(uint8_t *out, uint16_t out_size,
                                              uint16_t data_len)
 {
     return custom_build_response_frame(out, out_size,
-                                      PRODUCT_ADDR,      /* 使用固定产品地址 */
+                                      PRODUCT_ADDR,     /* 使用固定产品地址 */
                                       cmd,
-                                      MODULE_ADDR,      /* 使用固定模块地址 */
+                                      SELF_BOARD_ADDR,       /* 使用固定板卡地址 */
                                       ack,
                                       data, data_len);
 }
@@ -499,3 +526,35 @@ slave_state_t slave_get_state(void)
     return g_slave_state;
 }
 
+/**
+ * @brief 发送主动上传帧（从机->上位机，无需应答）
+ * @param cmd 命令码
+ * @param data 数据载荷指针
+ * @param data_len 数据载荷长度
+ * @retval 0 成功
+ * @retval -1 失败
+ */
+int slave_send_upload_frame(uint8_t cmd, const uint8_t *data, uint16_t data_len)
+{
+    uint8_t frame[512U];
+    int flen;
+    
+    if (port == NULL) {
+        return -1;
+    }
+    
+    /* 构建主动上传帧（使用custom_build_frame，不需要应答码） */
+    flen = custom_build_frame(frame, (uint16_t)sizeof(frame),
+                             PRODUCT_ADDR,
+                             cmd,
+                             SELF_BOARD_ADDR,
+                             data, data_len);
+    
+    if (flen > 0) {
+        (void)serial_write(port, frame, (uint16_t)flen);
+        LOG_D("Send upload frame: cmd=0x%02X, len=%d", cmd, (int)data_len);
+        return 0;
+    }
+    
+    return -1;
+}

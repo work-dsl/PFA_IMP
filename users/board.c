@@ -27,6 +27,7 @@
 #include "bsp_usart.h"
 #include "bsp_spi.h"
 #include "bsp_i2c.h"
+#include "bsp_iwdg.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -67,7 +68,7 @@ void board_init(void)
     log_register_handler("rtt", rtt_output_handler);
     log_enable_handler("rtt");
     
-//    LOG_D("SYSCLK frequency is %d!", HAL_RCC_GetSysClockFreq());
+    LOG_D("SYSCLK frequency is %d!", HAL_RCC_GetSysClockFreq());
 
 //    /* 检查复位源 */
 //    if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
@@ -84,6 +85,7 @@ void board_init(void)
     bsp_uart_init();
     bsp_spi_init();
     bsp_i2c_init();
+//    bsp_iwdg_init();
 }
 
 /**
@@ -139,10 +141,12 @@ void HAL_MspInit(void)
     /** NOJTAG: JTAG-DP Disabled and SW-DP Enabled
     */
     __HAL_AFIO_REMAP_SWJ_NOJTAG();
-    
+
+#ifdef UCPD1
     /** Disable the internal Pull-Up in Dead Battery pins of UCPD peripheral
     */
-//    HAL_PWREx_DisableUCPDDeadBattery();
+    HAL_PWREx_DisableUCPDDeadBattery();
+#endif
 }
 
 /**

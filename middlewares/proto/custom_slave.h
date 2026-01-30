@@ -31,16 +31,6 @@ typedef enum {
 
 /* Exported constants --------------------------------------------------------*/
 
-/**
- * @defgroup 地址定义
- * @{
- */
-#define PRODUCT_ADDR                        (0x03U) /**< 产品地址（用于区分不同的系列产品） */
-#define MODULE_ADDR                         (0x03U) /**< 模块地址（用于区分同一个产品中的不同模块） */
-/**
- * @}
- */
-
 #define HANDSHAKE_INTERVAL_MS               (1000U) /**< 握手间隔：1秒（1Hz） */
 
 /**
@@ -49,7 +39,7 @@ typedef enum {
  */
 
 /**
- * @defgroup 上位机 -> 下位机
+ * @defgroup 上位机 -> 本板卡
  * @{
  */
 #define CMD_SELECT_CATHETER                 (0x30U)  /**< 选择导管 */
@@ -57,24 +47,21 @@ typedef enum {
 #define CMD_SET_WORK_MODE                   (0x32U)  /**< 设置工作模式 */
 #define CMD_GET_WORK_MODE                   (0x33U)  /**< 获取工作模式 */
 #define CMD_PORT_CTRL                       (0x34U)  /**< 端口控制 */
-#define CMD_GET_LOOP_IMP_DATA               (0x35U)  /**< 获取回路阻抗数据 */   
+#define CMD_GET_LOOP_IMP_DATA               (0x35U)  /**< 获取回路阻抗数据 */
+#define CMD_GET_CONTACT_IMP_DATA            (0x36U)  /**< 获取贴靠阻抗数据 */
 /**
  * @}
  */
-
+ 
 /**
- * @defgroup 下位机 -> 上位机
+ * @defgroup 本板卡 -> 上位机（上位机不用应答）
  * @{
  */
-#define CMD_UPLOAD_LOOP_IMP_DATA            (0x36U) /**< 主动上传回路阻抗数据 */
+#define CMD_UPLOAD_LOOP_IMP_DATA            (0x37U)  /**< 主动上传回路阻抗数据（以20ms的周期） */
+#define CMD_UPLOAD_CONTACT_IMP_DATA         (0x38U)  /**< 主动上传贴靠阻抗数据（以20ms的周期） */
 /**
  * @}
  */
-
-/**
- * @}
- */
-
 
 /* Exported macros -----------------------------------------------------------*/
 
@@ -86,6 +73,7 @@ int  slave_proto_init(void);
 void slave_proto_task(void);
 void slave_process_frame(const uint8_t *frame, uint16_t len);
 slave_state_t slave_get_state(void);
+int slave_send_upload_frame(uint8_t cmd, const uint8_t *data, uint16_t data_len);
 
 #ifdef __cplusplus
 }

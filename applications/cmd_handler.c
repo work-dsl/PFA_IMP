@@ -16,6 +16,10 @@
 #include "data_mgmt.h"
 #include "port_ctrl.h"
 #include "major_logic.h"
+#include "errno-base.h"
+#include "custom_host.h"
+#include "contact_imp.h"
+#include "loop_imp.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -37,6 +41,11 @@
  * @brief 响应回调函数指针
  */
 static cmd_response_cb_t g_response_callback = NULL;
+
+/**
+ * @brief 回路阻抗数据主动上传使能标志
+ */
+static uint8_t g_loop_imp_upload_enable = 0U;
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -226,20 +235,42 @@ void cmd_handle_iap(const uint8_t *payload, uint16_t len, cmd_result_t *result)
 
 /**
  * @brief 处理上传模式命令
- * @param payload 数据载荷（未使用）
- * @param len 数据载荷长度（未使用）
+ * @param payload 数据载荷（1字节：上传模式，1=启用20ms上传，0=禁用）
+ * @param len 数据载荷长度
  * @param result 命令处理结果
  */
 void cmd_handle_upload_mode(const uint8_t *payload, uint16_t len, cmd_result_t *result)
 {
-    (void)payload;
-    (void)len;
+    /* 参数检查：需要1字节 */
+    if ((payload == NULL) || (len != 1U)) {
+        result->ack_code = ACK_ERR_INVALID_PARAM;
+        result->resp_len = 0;
+        LOG_E("Invalid parameter: len=%d", len);
+        return;
+    }
+    
+    /* 解析上传模式 */
+    if (payload[0] == 1U) {
+        /* 启用20ms主动上传回路阻抗数据 */
+        g_loop_imp_upload_enable = 1U;
+        LOG_D("Loop impedance upload enabled (20ms period)");
+    } else {
+        /* 禁用主动上传 */
+        g_loop_imp_upload_enable = 0U;
+        LOG_D("Loop impedance upload disabled");
+    }
 
     result->ack_code = ACK_OK;
     result->resp_len = 0;
+}
 
-    /* TODO: 实现上传模式控制 */
-    LOG_D("Upload mode command received");
+/**
+ * @brief 获取回路阻抗数据主动上传使能状态
+ * @return 1=使能，0=禁用
+ */
+uint8_t cmd_get_loop_imp_upload_enable(void)
+{
+    return g_loop_imp_upload_enable;
 }
 
 /**
@@ -263,7 +294,7 @@ void cmd_handle_status_upload(const uint8_t *payload, uint16_t len, cmd_result_t
 
 /**
  * @brief 处理选择导管命令
- * @param payload 数据载荷（2字节：type + spec）
+ * @param payload 数据载荷（2字节）
  * @param len 数据载荷长度
  * @param result 命令处理结果
  */
@@ -281,36 +312,19 @@ void cmd_handle_select_catheter(const uint8_t *payload, uint16_t len, cmd_result
     }
     
     /* 解析导管类型和规格 */
-    catheter.type = (port_cath_type_t)payload[0];
-    catheter.spec = (port_cath_spec_t)payload[1];
-    
-    /* 验证参数范围 */
-    if ((catheter.type > PORT_CATH_TYPE_FOCAL) || 
-        (catheter.spec > PORT_CATH_SPEC_C)) {
-        result->ack_code = ACK_ERR_INVALID_PARAM;
-        result->resp_len = 0;
-        LOG_E("Invalid catheter: type=%d, spec=%d", catheter.type, catheter.spec);
-        return;
-    }
-    
-    /* 验证PVI1不需要规格参数 */
-    if ((catheter.type == PORT_CATH_TYPE_PVI1) && (catheter.spec != PORT_CATH_SPEC_A)) {
-        result->ack_code = ACK_ERR_INVALID_PARAM;
-        result->resp_len = 0;
-        LOG_E("PVI1 should use spec A");
-        return;
-    }
+    catheter.type = (cath_type_t)payload[0];
+    catheter.polarity = (cath_pol_t)payload[1];
     
     /* 调用端口控制模块选择导管 */
-    ret = port_crtl_select_catheter(catheter);
+    ret = port_ctrl_select_catheter(catheter);
     if (ret == 0) {
         result->ack_code = ACK_OK;
         result->resp_len = 0;
-        LOG_D("Catheter selected: type=%d, spec=%d", catheter.type, catheter.spec);
-    } else {
-        result->ack_code = ACK_ERR_OPERATE_ABNORMAL;
+        LOG_D("Catheter selected: type=%d, spec=%d", catheter.type, catheter.polarity);
+    } else if (ret == -EINVAL) {
+        result->ack_code = ACK_ERR_INVALID_PARAM;
         result->resp_len = 0;
-        LOG_E("Failed to select catheter: ret=%d", ret);
+        LOG_W("Invalid parameter");
     }
 }
 
@@ -320,7 +334,7 @@ void cmd_handle_select_catheter(const uint8_t *payload, uint16_t len, cmd_result
  * @param len 数据载荷长度（未使用）
  * @param result 命令处理结果
  */
-void cmd_handle_get_catheter(const uint8_t *payload, uint16_t len, cmd_result_t *result)
+void cmd_handle_get_catheter_info(const uint8_t *payload, uint16_t len, cmd_result_t *result)
 {
     const port_cath_t *catheter = NULL;
     
@@ -338,11 +352,11 @@ void cmd_handle_get_catheter(const uint8_t *payload, uint16_t len, cmd_result_t 
     
     /* 返回当前导管信息（2字节：type + spec） */
     result->resp_data[0] = (uint8_t)catheter->type;
-    result->resp_data[1] = (uint8_t)catheter->spec;
+    result->resp_data[1] = (uint8_t)catheter->polarity;
     result->resp_len = 2U;
     result->ack_code = ACK_OK;
     
-    LOG_D("Get catheter: type=%d, spec=%d", catheter->type, catheter->spec);
+    LOG_D("Get catheter: type=%d, spec=%d", catheter->type, catheter->polarity);
 }
 
 /**
@@ -367,17 +381,25 @@ void cmd_handle_set_work_mode(const uint8_t *payload, uint16_t len, cmd_result_t
     /* 解析工作模式 */
     mode = (port_mode_t)payload[0];
     
-    /* 验证参数范围 */
-    if (mode > PORT_MODE_ABLATION) {
-        result->ack_code = ACK_ERR_INVALID_PARAM;
-        result->resp_len = 0;
-        LOG_E("Invalid work mode: %d", mode);
-        return;
-    }
-    
     /* 调用端口控制模块设置工作模式 */
     ret = port_ctrl_set_mode(mode);
     if (ret == 0) {
+        /* 根据工作模式控制回路阻抗检测 */
+        if (mode == PORT_MODE_LOOP_IMP) {
+            /* 回路阻抗模式：启动阻抗检测 */
+            if (loop_imp_ctrl(IMPCTRL_START, NULL) == 0) {
+                LOG_D("Loop impedance measurement started");
+            } else {
+                result->ack_code = ACK_ERR_OPERATE_ABNORMAL;
+                result->resp_len = 0;
+                LOG_E("Failed to start loop impedance measurement");
+                return;
+            }
+        } else {
+            /* 其他模式：停止阻抗检测 */
+            (void)loop_imp_ctrl(IMPCTRL_STOPNOW, NULL);
+            LOG_D("Loop impedance measurement stopped");
+        }
         result->ack_code = ACK_OK;
         result->resp_len = 0;
         LOG_D("Work mode set: %d", mode);
@@ -427,7 +449,7 @@ void cmd_handle_port_ctrl(const uint8_t *payload, uint16_t len, cmd_result_t *re
     if ((payload == NULL) || (len != 4U)) {
         result->ack_code = ACK_ERR_INVALID_PARAM;
         result->resp_len = 0;
-        LOG_E("Invalid parameter: len=%d", len);
+        LOG_W("Invalid parameter: len=%d", len);
         return;
     }
     
@@ -437,7 +459,7 @@ void cmd_handle_port_ctrl(const uint8_t *payload, uint16_t len, cmd_result_t *re
                        ((uint32_t)payload[2] << 16U) |
                        ((uint32_t)payload[3] << 24U);
     
-    /* 调用端口控制模块控制电极 */
+    /* 保存电极位图 */
     ret = port_ctrl_elec(pole_elec_bitmap);
     if (ret == 0) {
         result->ack_code = ACK_OK;
@@ -447,6 +469,56 @@ void cmd_handle_port_ctrl(const uint8_t *payload, uint16_t len, cmd_result_t *re
         result->ack_code = ACK_ERR_OPERATE_ABNORMAL;
         result->resp_len = 0;
         LOG_E("Failed to control port: ret=%d", ret);
+    }
+}
+
+/**
+ * @brief 处理获取回路阻抗数据命令
+ * @param payload 数据载荷（未使用）
+ * @param len 数据载荷长度（未使用）
+ * @param result 命令处理结果
+ */
+void cmd_handle_get_loop_imp_data(const uint8_t *payload, uint16_t len, cmd_result_t *result)
+{
+    float imp_real;
+    
+    (void)payload;
+    (void)len;
+
+    /* 获取最新的阻抗实部数据 */
+    imp_real = loop_imp_get_data();
+    
+    /* 将float类型数据复制到应答数据缓冲区（4字节，小端序） */
+    memcpy(result->resp_data, &imp_real, sizeof(float));
+    result->resp_len = sizeof(float);
+    result->ack_code = ACK_OK;
+    
+    LOG_D("Get loop imp data: %.2f Ohm", imp_real);
+}
+
+/**
+ * @brief 处理获取贴靠阻抗数据命令
+ * @param payload 数据载荷（未使用）
+ * @param len 数据载荷长度（未使用）
+ * @param result 命令处理结果
+ */
+void cmd_handle_get_contact_imp_data(const uint8_t *payload, uint16_t len, cmd_result_t *result)
+{
+    int ret;
+    
+    (void)payload;
+    (void)len;
+    
+    /* 通过贴靠检测板应用层获取数据 */
+    ret = contact_imp_get_data(NULL);
+    if (ret == 0) {
+        result->ack_code = ACK_OK;
+        result->resp_len = 0;
+        LOG_D("Get contact imp data command sent");
+    } else {
+        result->ack_code = ACK_ERR_OPERATE_ABNORMAL;
+        result->resp_len = 0;
+        LOG_E("Failed to send get contact imp data command");
     }
 }
 

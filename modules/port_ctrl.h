@@ -27,50 +27,53 @@
 
 /* Exported types ------------------------------------------------------------*/
 
+/* 导管类型 */
+typedef enum {
+    CATH_TYPE_PVI1 = 1,         /* PVI 一代 */
+    CATH_TYPE_PVI2,             /* PVI 二代 */
+    CATH_TYPE_FOCAL             /* 局灶 */
+} cath_type_t;
+
+/* 导管极性 */
+typedef enum {
+    CATH_POL_A = 1,         /* 负极板-断开, 顶(网)电极极性-负, 1-3-5杆极性-正（三个导管都支持）*/
+    CATH_POL_B,             /* 负极板-导通, 顶(网)电极极性-负, 1-3-5杆极性-负（仅PVI2代/局灶）*/
+    CATH_POL_C,             /* 负极板-断开, 顶(网)电极极性-正, 1-3-5杆极性-负（仅PVI2代/局灶）*/
+    CATH_POL_D              /* 负极板-断开, 顶(网)电极极性-正, 1-3-5杆极性-正（仅PVI2代）*/
+} cath_pol_t;
+
+/* 导管 */
+typedef struct {
+    cath_type_t type;
+    cath_pol_t  polarity;
+} port_cath_t;
+
 /* 工作模式 */
 typedef enum {
-    PORT_MODE_MAPPING = 0,      /* 标测 */
+    PORT_MODE_MAPPING = 1,      /* 标测 */
     PORT_MODE_CONTACT_IMP,      /* 贴靠阻抗检测 */
     PORT_MODE_LOOP_IMP,         /* 回路阻抗检测 */
     PORT_MODE_ABLATION,         /* 消融 */
 } port_mode_t;
 
-/* 导管类型 */
-typedef enum {
-    PORT_CATH_TYPE_PVI1 = 0,         /* PVI 一代 */
-    PORT_CATH_TYPE_PVI2,             /* PVI 二代 */
-    PORT_CATH_TYPE_FOCAL             /* 局灶 */
-} port_cath_type_t;
-
-/* 导管规格（仅PVI2/局灶消融）*/
-typedef enum {
-    PORT_CATH_SPEC_A = 0,         /* PC2=H, PC1=L, PC0=L */
-    PORT_CATH_SPEC_B,             /* PC2=L, PC1=H, PC0=L */
-    PORT_CATH_SPEC_C              /* PC2=L, PC1=H, PC0=H */
-} port_cath_spec_t;
-
-/* 导管 */
-typedef struct {
-    port_cath_type_t type;
-    port_cath_spec_t spec;
-} port_cath_t;
-
 /* Exported constants --------------------------------------------------------*/
+/* 后续改为使用GPIO控制贴靠继电器 */
+#define CONTACT_IMP_USE_GPIO            (1)
 
+/* 模式选择继电器 GPIO 引脚定义 */
 #define ECG_MAP_RELAY_PIN_ID            (15)    /* PA15，心电标测继电器 */
+#if (CONTACT_IMP_USE_GPIO == 1)
+    #define CONTACT_IMP_RELAY_PIN_ID    (2)     /* PA2，贴靠阻抗继电器 */
+#endif
 #define LOOP_IMP_RELAY_PIN_ID           (3)     /* PA3，回路阻抗继电器 */
-#define NEG_PLATE_RELAY_PIN_ID          (34)    /* PC2，负极板继电器 */
 
-#define TOP_WIRE_POL_PIN_ID             (33)    /* PC1，顶（网）电极极性选择 */
+/* 极性选择继电器 GPIO 引脚定义 */
+#define NEG_PLATE_RELAY_PIN_ID          (35)    /* PC3，负极板继电器 */
+#define TOP_WIRE_POL_PIN_ID             (39)    /* PC7，顶（网）电极极性选择 */
 #define POLE_POL_SELECT_PIN_ID          (32)    /* PC0，1-3-5电杆极性选择 */
 
-#define TOP_WIRE_PIN_ID                 (41)    /* PC9，顶（网）电极 */
-
-
-#define CONTACT_IMP_USE_GPIO            (0)
-#if (CONTACT_IMP_USE_GPIO == 1)
-    #define CONTACT_IMP_RELAY_PIN_ID    (35)    /* PC3，贴靠阻抗继电器 */
-#endif
+/* 电杆电极开关继电器 GPIO 引脚定义 */
+#define TOP_WIRE_PIN_ID                 (34)    /* PC2，顶（网）电极继电器 */
 
 /* Exported macros -----------------------------------------------------------*/
 
@@ -83,7 +86,7 @@ typedef struct {
 /* Exported functions --------------------------------------------------------*/
 
 int port_ctrl_init(void);
-int port_crtl_select_catheter(port_cath_t catheter);
+int port_ctrl_select_catheter(port_cath_t catheter);
 int port_ctrl_set_mode(port_mode_t mode);
 int port_ctrl_elec(uint32_t pole_elec_bitmap);
 const port_cath_t *port_ctrl_get_catheter(void);

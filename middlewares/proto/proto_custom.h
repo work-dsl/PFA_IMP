@@ -45,7 +45,7 @@ typedef enum {
     
     /* 操作错误 */
     ACK_ERR_PRODUCT_ADDR     = 0x11,    /**< 产品地址错误 */
-    ACK_ERR_MODULE_ADDR      = 0x12,    /**< 模块地址错误 */
+    ACK_ERR_BOARD_ADDR       = 0x12,    /**< 板卡地址错误 */
     ACK_ERR_INVALID_PARAM    = 0x13,    /**< 数据参数无效 */
     ACK_ERR_UNSUP_CMD        = 0x14,    /**< 不支持的命令 */
     ACK_ERR_BUSY             = 0x15,    /**< 操作正忙 */
@@ -53,16 +53,27 @@ typedef enum {
     ACK_ERR_MODE_ABNORMAL    = 0x17,    /**< 模式异常 */
     ACK_ERR_OPERATE_INVALID  = 0x18,    /**< 操作无效 */
     ACK_ERR_MODULE_LOCK      = 0x19,    /**< 模块锁定 */
-    ACK_ERR_SYSTEM_LOCK      = 0x20,    /**< 系统锁定 */
+    ACK_ERR_SYSTEM_LOCK      = 0x1A,    /**< 系统锁定 */
     
     /* 针对操作耗时类命令 */
-    ACK_IN_PROGERESS         = 0x80,    /**< 已接受，正在执行 */
+    ACK_IN_PROGERESS         = 0x20,    /**< 已接受，正在执行 */
 } ack_code_t;
 
 /* Exported constants --------------------------------------------------------*/
 
-#define PROTO_CUSTOM_FRAME_MIN_LEN      (0x09U)  /**< 自定义协议最小帧长度 */
-#define PROTO_CUSTOM_FRAME_MAX_LEN      (64U)    /**< 自定义协议最大帧长度 */
+#define PROTO_CUSTOM_FRAME_MIN_LEN      (9U)    /**< 自定义协议最小帧长度 */
+#define PROTO_CUSTOM_FRAME_MAX_LEN      (64U)   /**< 自定义协议最大帧长度 */
+
+/**
+ * @defgroup 地址定义
+ * @{
+ */
+#define PRODUCT_ADDR                        (0x03U) /**< 产品地址（用于区分不同的系列产品） */
+#define SELF_BOARD_ADDR                     (0x03U) /**< 自身板卡地址（用于区分同一个产品中的不同板卡） */
+#define CONTACT_IMP_BOARD_ADDR              (0x06U) /**< 贴靠采集板卡地址，对于我们来说贴靠采集板是从机 */
+/**
+ * @}
+ */
 
 /**
  * @defgroup 通用命令码定义
@@ -82,11 +93,11 @@ typedef enum {
 #define CMD_CTRL_LOW_POWER_MODE         (0x09U) /**< 低功耗控制 */
 #define CMD_CTRL_IAP                    (0x0AU) /**< 启动在线升级 */
 #define CMD_CTRL_UPLOAD_MODE            (0x0BU) /**< 控制上传模式 */
-#define CMD_STATUS_UPLOAD               (0x0CU) /**< 状态上传 */
 
 /**
  * @brief 下位机 -> 上位机
  */
+#define CMD_STATUS_UPLOAD               (0x0CU) /**< 异常状态上传 */
 #define CMD_FRAME_PARSER_ERR_ACK        (0x2FU) /**< 帧解析错误应答 */
 /**
  * @}
@@ -114,11 +125,11 @@ static inline uint16_t custom_len_semantic_total(const uint8_t *frame_so_far,
 }
 
 int custom_build_frame(uint8_t *out, uint16_t out_size,
-                     uint8_t dev, uint8_t cmd, uint8_t mod,
+                     uint8_t product, uint8_t cmd, uint8_t board,
                      const uint8_t *data, uint16_t data_len);
                     
 int custom_build_response_frame(uint8_t *out, uint16_t out_size,
-                               uint8_t dev, uint8_t cmd, uint8_t mod,
+                               uint8_t product, uint8_t cmd, uint8_t board,
                                uint8_t ack,
                                const uint8_t *data, uint16_t data_len);
 

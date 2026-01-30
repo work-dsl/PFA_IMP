@@ -27,29 +27,32 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 typedef struct
 {
-/* Common configurations for all kinds of Application. */
-    BoolFlag bParaChanged;        /* Indicate to generate sequence again. It's auto cleared by AppBIAInit */
-    uint32_t SeqStartAddr;        /* Initialaztion sequence start address in SRAM of AD5940  */
-    uint32_t MaxSeqLen;           /* Limit the maximum sequence.   */
-    uint32_t SeqStartAddrCal;     /* Measurement sequence start address in SRAM of AD5940 */
-    uint32_t MaxSeqLenCal;
-/* Application related parameters */ 
-    float ImpODR;                 /*  */
-    int32_t NumOfData;            /* By default it's '-1'. If you want the engine stops after get NumofData, then set the value here. Otherwise, set it to '-1' which means never stop. */
-    float WuptClkFreq;            /* The clock frequency of Wakeup Timer in Hz. Typically it's 32kHz. Leave it here in case we calibrate clock in software method */
-    float SysClkFreq;             /* The real frequency of system clock */
-    float AdcClkFreq;             /* The real frequency of ADC clock */
-    float RcalVal;                /* Rcal value in Ohm */
+    BoolFlag bParaChanged;        /* Indicate to generate sequence again. */
+
+    uint32_t SeqStartAddr;        /* 初始化序列在 AD5940 SRAM 中的起始地址。用于存储初始化命令序列。  */
+    uint32_t MaxSeqLen;           /* 初始化序列的最大长度限制，防止序列超出 SRAM 容量。   */
+    uint32_t SeqStartAddrCal;     /* 测量序列在 AD5940 SRAM 中的起始地址。用于存储测量命令序列。 */
+    uint32_t MaxSeqLenCal;        /* 测量序列的最大长度限制，防止序列超出 SRAM 容量。 */
+
+    float ImpODR;                 /* 阻抗输出数据率（Output Data Rate），单位 Hz，控制阻抗数据的输出频率。 */
+    int32_t NumOfData;            /* 数据采集数量。默认 -1 表示持续采集不停止；设置为正数时，采集到指定数量后停止。 */
+    float WuptClkFreq;            /* 唤醒定时器时钟频率（Hz），通常为 32kHz。用于软件校准时钟。 */
+    float SysClkFreq;             /* 系统时钟实际频率（Hz），默认 16MHz。用于频率计算和时序控制。 */
+    float AdcClkFreq;             /* ADC 时钟实际频率（Hz），默认 16MHz。用于 ADC 采样率计算。 */
+    float RcalVal;                /* 校准电阻值（Ω），用于阻抗校准计算。 */
+
     /* Switch Configuration */
     uint32_t DswitchSel;
     uint32_t PswitchSel;
     uint32_t NswitchSel;
     uint32_t TswitchSel;
+    
     uint32_t PwrMod;              /* Control Chip power mode(LP/HP) */
     uint32_t HstiaRtiaSel;        /* Use internal RTIA, select from RTIA_INT_200, RTIA_INT_1K, RTIA_INT_5K, RTIA_INT_10K, RTIA_INT_20K, RTIA_INT_40K, RTIA_INT_80K, RTIA_INT_160K */
     uint32_t ExcitBufGain;        /* Select from  EXCTBUFGAIN_2, EXCTBUFGAIN_0P25 */     
     uint32_t HsDacGain;           /* Select from  HSDACGAIN_1, HSDACGAIN_0P2 */
     uint32_t HsDacUpdateRate;
+    
     float DacVoltPP;              /* DAC output voltage in mV peak to peak. Maximum value is 800mVpp. Peak to peak voltage  */
     float BiasVolt;               /* The excitation signal is DC+AC. This parameter decides the DC value in mV unit. 0.0mV means no DC bias.*/
     float SinFreq;                /* Frequency of excitation signal */
@@ -61,19 +64,14 @@ typedef struct
     uint8_t ADCSinc2Osr;  
     uint8_t ADCAvgNum;
     /* Sweep Function Control */
-    SoftSweepCfg_Type SweepCfg;
     uint32_t FifoThresh;           /* FIFO threshold. Should be N*4 */
-/* Private variables for internal usage */
-/* Private variables for internal usage */
-    float SweepCurrFreq;
-    float SweepNextFreq;
     float FreqofData;                         /* The frequency of latest data sampled */
     BoolFlag IMPInited;                       /* If the program run firstly, generated sequence commands */
     SEQInfo_Type InitSeqInfo;
     SEQInfo_Type MeasureSeqInfo;
     BoolFlag StopRequired;          /* After FIFO is ready, stop the measurement sequence */
     uint32_t FifoDataCount;         /* Count how many times impedance have been measured */
-}AppIMPCfg_Type;
+}loop_imp_cfg_t;
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -87,11 +85,11 @@ typedef struct
 /* Exported variables --------------------------------------------------------*/
 
 /* Exported functions --------------------------------------------------------*/
-int32_t AppIMPInit(void);
-int32_t AppIMPGetCfg(void *pCfg);
-int32_t AppIMPISR(void *pBuff, uint32_t *pCount);
-int32_t AppIMPCtrl(uint32_t Command, void *pPara);
-void AppImpTask(void);
+int32_t loop_imp_init(void);
+int32_t loop_imp_isr(void *pBuff, uint32_t *pCount);
+int32_t loop_imp_ctrl(uint32_t Command, void *pPara);
+void    loop_imp_task(void);
+float   loop_imp_get_data(void);
 
 #ifdef __cplusplus
 }
