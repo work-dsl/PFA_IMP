@@ -23,8 +23,12 @@
 #include "board.h"
 #include "gpio.h"
 #include "stimer.h"
-#include "watchdog.h"
+#include "wdg.h"
+#include "errno-base.h"
 
+#define  LOG_TAG             "safety"
+#define  LOG_LVL             4
+#include "log.h"
 /*------------------------------ Macro definition -----------------------------*/
 
 
@@ -33,7 +37,7 @@
 /*------------------------------ variables prototypes -------------------------*/
 stimer_t led_timer;
 
-static struct watchdog_device* iwdg_dev = NULL;
+static struct wdg_device* iwdg_dev = NULL;
 
 /*------------------------------ application ----------------------------------*/
 void led_timer_callback(void* arg)
@@ -49,8 +53,10 @@ void led_timer_callback(void* arg)
     }
 }
 
-void safety_init(void)
+int safety_init(void)
 {
+    int ret = 0;
+    
     /* set led gpio mode */
     gpio_set_mode(LED_PIN_ID, PIN_OUTPUT_PP, PIN_PULL_UP);
     gpio_write(LED_PIN_ID, 1);
@@ -58,16 +64,38 @@ void safety_init(void)
     stimer_create(&led_timer, 800, STIMER_AUTO_RELOAD, led_timer_callback, (void*)&led_timer);
     stimer_start(&led_timer);
 
-//    iwdg_dev = watchdog_find("iwdg");
-//    if (iwdg_dev != NULL) {
-//        watchdog_set_timeout(iwdg_dev, 5000);
-//        watchdog_start(iwdg_dev);
-//    }
+    iwdg_dev = wdg_find("stm32_iwdg");
+    if (iwdg_dev == NULL) {
+        LOG_W("safety_init: wdg_find fail!");
+        return -EIO;
+    }
+    
+    ret = wdg_start(iwdg_dev);
+    if (ret != 0) {
+        LOG_W("safety_init: wdg_start fail!");
+        iwdg_dev = NULL;
+    }
+    
+    return ret;
 }
 
 void safety_task(void)
 {
-//    watchdog_ping(iwdg_dev);
+    static uint32_t feed_fail_count = 0U;
+
+    if (iwdg_dev == NULL) {
+        return;
+    }
+
+    if (wdg_feed(iwdg_dev) != 0) {
+        feed_fail_count++;
+        /* 仅首次失败或每第 500 次失败打印，避免刷屏 */
+        if ((feed_fail_count == 1U) || ((feed_fail_count % 1000U) == 0U)) {
+            LOG_W("safety_task: wdg_feed fail, count=%lu", (unsigned long)feed_fail_count);
+        }
+    } else {
+        feed_fail_count = 0U;  /* 成功则清零，便于下次连续失败时再次打印 */
+    }
 }
 
 void safety_perform_software_reset(void)

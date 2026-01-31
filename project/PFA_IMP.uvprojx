@@ -314,7 +314,7 @@
           </ArmAdsMisc>
           <Cads>
             <interw>1</interw>
-            <Optim>1</Optim>
+            <Optim>4</Optim>
             <oTime>0</oTime>
             <SplitLS>0</SplitLS>
             <OneElfS>1</OneElfS>
@@ -556,11 +556,6 @@
               <FilePath>..\devices\gpio.c</FilePath>
             </File>
             <File>
-              <FileName>watchdog.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\devices\watchdog.c</FilePath>
-            </File>
-            <File>
               <FileName>serial.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\devices\serial.c</FilePath>
@@ -594,6 +589,11 @@
               <FileName>mtd_core.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\devices\mtd_core.c</FilePath>
+            </File>
+            <File>
+              <FileName>wdg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\devices\wdg.c</FilePath>
             </File>
           </Files>
         </Group>

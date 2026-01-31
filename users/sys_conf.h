@@ -20,7 +20,8 @@
 /* Exported define -----------------------------------------------------------*/
 #define USING_HW_ATOMIC
 
-#define LOG_GLOBAL_LVL          LOG_LVL_DEBUG
+#define LOG_BUF_SIZE                (1024)
+#define LOG_GLOBAL_LVL              LOG_LVL_DEBUG
 
 /* Exported typedef ----------------------------------------------------------*/
 

@@ -37,7 +37,6 @@
 void board_init(void);
 void Error_Handler(void);
 void debug_log_write(const char *hypothesis_id, const char *location, const char *message, const char *data);
-void MX_IWDG_Init(void);
 
 
 #ifdef __cplusplus

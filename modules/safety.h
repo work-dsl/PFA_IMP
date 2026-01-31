@@ -31,7 +31,7 @@
 
 
 /*------------------------------ function declarations -----------------------*/
-void safety_init(void);
+int  safety_init(void);
 void safety_task(void);
 void safety_perform_software_reset(void);
 

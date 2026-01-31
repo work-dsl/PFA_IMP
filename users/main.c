@@ -101,10 +101,9 @@ int main(void)
     
     /* 系统服务初始化 */
     stimer_init(HAL_GetTick);
-    
+   
     /* 协议应用层初始化 */
-    slave_proto_init();
-    
+    slave_proto_init();  
     port_ctrl_init();
     
     /* 初始化主机 */
@@ -122,6 +121,9 @@ int main(void)
     
     /* 应用主逻辑协调器初始化 */
     major_logic_init();
+    
+    /* 安全模块初始化 */
+    (void)safety_init();
 
     /* 初始化回路阻抗测量模块 */
     loop_imp_init();
@@ -134,17 +136,16 @@ int main(void)
                         NULL);
     (void)stimer_start(&g_loop_imp_upload_timer);
     
-    /* 安全模块初始化 */
-    safety_init();
+    LOG_I("System init suceeces!");
     
     while (1)
     {
-        safety_task();          /* 安全任务 */
         slave_proto_task();     /* 协议处理任务 */
         host_task(g_host1);
         major_logic_task();     /* 主逻辑协调任务 */
         loop_imp_task();
         stimer_service();       /* 软件定时器服务 */
+        safety_task();          /* 安全任务 */
     }
 }
 

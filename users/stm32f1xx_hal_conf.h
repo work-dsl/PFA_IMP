@@ -34,7 +34,7 @@
   */
 
 #define HAL_MODULE_ENABLED
-  /*#define HAL_ADC_MODULE_ENABLED   */
+/*#define HAL_ADC_MODULE_ENABLED   */
 /*#define HAL_CRYP_MODULE_ENABLED   */
 /*#define HAL_CAN_MODULE_ENABLED   */
 /*#define HAL_CAN_LEGACY_MODULE_ENABLED   */
@@ -49,7 +49,7 @@
 #define HAL_I2C_MODULE_ENABLED
 /*#define HAL_I2S_MODULE_ENABLED   */
 /*#define HAL_IRDA_MODULE_ENABLED   */
-/*#define HAL_IWDG_MODULE_ENABLED   */
+#define HAL_IWDG_MODULE_ENABLED
 /*#define HAL_NOR_MODULE_ENABLED   */
 /*#define HAL_NAND_MODULE_ENABLED   */
 /*#define HAL_PCCARD_MODULE_ENABLED   */
@@ -162,7 +162,7 @@
   * @brief Uncomment the line below to expanse the "assert_param" macro in the
   *        HAL drivers code
   */
-/* #define USE_FULL_ASSERT    1U */
+//#define USE_FULL_ASSERT    1U
 
 /* ################## Ethernet peripheral configuration ##################### */
 
