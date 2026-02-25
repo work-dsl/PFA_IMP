@@ -137,7 +137,6 @@ int port_ctrl_select_catheter(port_cath_t catheter)
     int ret = 0;
     port_cath_t old_catheter = g_current_catheter;
     
-    
     /* 验证导管类型和极性的组合 */
     if (catheter.type == CATH_TYPE_PVI1) {
         /* PVI1仅支持CATH_POL_A（三个导管都支持） */
@@ -169,27 +168,8 @@ int port_ctrl_select_catheter(port_cath_t catheter)
     
     /* 保存当前导管信息 */
     g_current_catheter = catheter;
-    
-    /* 若切换了导管，需要重新审查预设电极位图的约束条件 */
-    if ((old_catheter.type != 0) && (old_catheter.polarity != 0)) {
-        if ((old_catheter.type != catheter.type) || 
-            (old_catheter.polarity != catheter.polarity)) {    
-            if ((g_current_work_mode == PORT_MODE_LOOP_IMP) || 
-                (g_current_work_mode == PORT_MODE_ABLATION)) {
-                /* 约束检查 */
-                if (!__check_constraints(g_preset_elec_bitmap)) {
-                    /* 应用约束条件 */
-                    __apply_constraints_to_bitmap(g_preset_elec_bitmap);
-                }
-                ret = __apply_elec_bitmap_to_hardware(g_preset_elec_bitmap);
-                if (ret != 0) {
-                    LOG_E("Failed to apply electrode bitmap to hardware! ret=%d", ret);
-                    return ret;
-                }
-            }
-            LOG_I("Catheter changed, reapplied electrode bitmap constraints, bitmap=0x%08X", g_preset_elec_bitmap);
-        }
-    }
+    port_ctrl_set_mode(g_current_work_mode);
+    LOG_I("Catheter changed!");
     
     return 0;
 }
@@ -465,6 +445,10 @@ static int __apply_elec_bitmap_to_hardware(uint32_t bitmap)
     ret = tca6424_write_outputs24(&tca6424_dev, (~pole_bitmap) & 0x00FFFFFFU);
     if (ret != 0) {
         LOG_E("tca6424_write_outputs24 fail! ret=%d", ret);
+        /* 写失败时硬件复位TCA6424并恢复到安全状态（全关） */
+        tca6424_reset();
+        (void)tca6424_write_outputs24(&tca6424_dev, 0x00FFFFFFU);
+        (void)tca6424_write_config24(&tca6424_dev, 0x00000000U);
         return ret;
     }
     
@@ -549,4 +533,5 @@ static void port_ctrl_set_mode_relays(uint8_t ecg_map, uint8_t contact_imp, uint
     (void)contact_imp_ctrl_relay((uint8_t)(~contact_imp & 0x01U));
 #endif
     gpio_write(LOOP_IMP_RELAY_PIN_ID, (uint8_t)(~loop_imp & 0x01U));
+    LOG_I("port ctrl set mode relays complete!");
 }

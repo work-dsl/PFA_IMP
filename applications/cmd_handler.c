@@ -458,6 +458,7 @@ void cmd_handle_port_ctrl(const uint8_t *payload, uint16_t len, cmd_result_t *re
                        ((uint32_t)payload[1] << 8U) |
                        ((uint32_t)payload[2] << 16U) |
                        ((uint32_t)payload[3] << 24U);
+    LOG_I("Host send bitmap = 0x%08X", pole_elec_bitmap);
     
     /* 保存电极位图 */
     ret = port_ctrl_elec(pole_elec_bitmap);

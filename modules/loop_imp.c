@@ -688,7 +688,7 @@ int32_t loop_imp_data_process(int32_t * const pData, uint32_t *pDataCount)
         
         pOut[i].Magnitude = RcalMag / RzMag * imp_cfg.RcalVal;
         pOut[i].Phase = RcalPhase - RzPhase;
-//        LOG_D("RzMag: %f Ohm , RzPhase: %f", pOut[i].Magnitude, pOut[i].Phase*180/MATH_PI);
+        LOG_D("RzMag: %f Ohm , RzPhase: %f", pOut[i].Magnitude, pOut[i].Phase*180/MATH_PI);
     }
     
     *pDataCount = ImpResCount;

@@ -95,6 +95,7 @@
  */
 #define LED_PIN_ID                      (45)    /* PC13 */
 
+#define AD5940_CS_PIN_ID                (4)     /* PA4 */
 #define AD5940_RST_PIN_ID               (17)    /* PB1 */
 #define AD5940_GPIO0_INT                (36)    /* PC4 */
 
@@ -206,6 +207,9 @@
     #define BSP_I2C1_SDA_PORT              GPIOB
     #define BSP_I2C1_SDA_PIN               GPIO_PIN_7
     #define BSP_I2C1_IRQ_PRIORITY          0
+    /* GPIO pin_id for bus recovery (gpio.h: PORTB 16..31, PB6=22, PB7=23) */
+    #define BSP_I2C1_SCL_PIN_ID            (22U)
+    #define BSP_I2C1_SDA_PIN_ID            (23U)
 #endif
 
 /* ============================================================================
@@ -218,6 +222,9 @@
     #define BSP_I2C2_SDA_PORT              GPIOB
     #define BSP_I2C2_SDA_PIN               GPIO_PIN_11
     #define BSP_I2C2_IRQ_PRIORITY          0
+    /* GPIO pin_id for bus recovery (gpio.h: PORTB 16..31, PB10=26, PB11=27) */
+    #define BSP_I2C2_SCL_PIN_ID            (26U)
+    #define BSP_I2C2_SDA_PIN_ID            (27U)
 #endif
 
 /* Exported typedef ----------------------------------------------------------*/

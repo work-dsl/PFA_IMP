@@ -73,7 +73,7 @@ int slave_proto_init(void)
 {
     int ret;
 
-    port = serial_find("uart1");
+    port = serial_find("uart5");
     if (port == NULL) {
         LOG_D("Failed to find uart1\r\n");
         return -ENODEV;
