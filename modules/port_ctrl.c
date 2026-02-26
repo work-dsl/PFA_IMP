@@ -18,6 +18,10 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "port_ctrl.h"
+
+#include <string.h>
+
+#include "bsp_conf.h"
 #include "gpio.h"
 #include "tca6424.h"
 #include <errno-base.h>
@@ -77,6 +81,7 @@ static void __apply_constraints_to_bitmap(uint32_t bitmap);
 int port_ctrl_init(void)
 {
     int ret = 0;
+    struct i2c_adapter *adap = NULL;
     
     /* 初始化模式继电器控制 */
     gpio_set_mode(ECG_MAP_RELAY_PIN_ID, PIN_OUTPUT_PP, PIN_PULL_UP);
@@ -101,23 +106,24 @@ int port_ctrl_init(void)
     gpio_write(TOP_WIRE_PIN_ID, 1);
     
     /* 初始化电杆电极开关控制 */
-    ret = tca6424_init(&tca6424_dev, TCA6424_I2C_ADDR_H, "i2c1");
+    ret = tca6424_init(&tca6424_dev, TCA6424_I2C_ADDR_H, "i2c1",
+                       TCA6424_RST_PIN_ID, UINT32_MAX);
     if (ret != 0) {
         LOG_E("tca6424_init fail!");
         return ret;
     }
     
     /* 预置 TCA6424 输出锁存器全为1（关） */
-    ret = tca6424_write_outputs24(&tca6424_dev, 0xFFFFFFu);
+    ret = tca6424_write_outputs(&tca6424_dev, 0xFFFFFFu);
     if (ret != 0) {
-        LOG_E("tca6424_write_outputs24 fail! ret=%d", ret);
+        LOG_E("tca6424_write_outputs fail! ret=%d", ret);
         return ret;
     }
     
     /* 将TCA6424的端口全部配置为输出模式 */
-    ret = tca6424_write_config24(&tca6424_dev, 0x00000000u);
+    ret = tca6424_write_config(&tca6424_dev, 0x00000000u);
     if (ret != 0) {
-        LOG_E("tca6424_write_config24 fail! ret=%d", ret);
+        LOG_E("tca6424_write_config fail! ret=%d", ret);
         return ret;
     }
     
@@ -442,13 +448,13 @@ static int __apply_elec_bitmap_to_hardware(uint32_t bitmap)
     pole_bitmap = (final_bitmap >> 1U) & 0x00FFFFFFU;
     
     /* 控制电杆电极,低电平是开，高电平是关 */
-    ret = tca6424_write_outputs24(&tca6424_dev, (~pole_bitmap) & 0x00FFFFFFU);
+    ret = tca6424_write_outputs(&tca6424_dev, (~pole_bitmap) & 0x00FFFFFFU);
     if (ret != 0) {
-        LOG_E("tca6424_write_outputs24 fail! ret=%d", ret);
+        LOG_E("tca6424_write_outputs fail! ret=%d", ret);
         /* 写失败时硬件复位TCA6424并恢复到安全状态（全关） */
-        tca6424_reset();
-        (void)tca6424_write_outputs24(&tca6424_dev, 0x00FFFFFFU);
-        (void)tca6424_write_config24(&tca6424_dev, 0x00000000U);
+        tca6424_reset(&tca6424_dev);
+        (void)tca6424_write_outputs(&tca6424_dev, 0x00FFFFFFU);
+        (void)tca6424_write_config(&tca6424_dev, 0x00000000U);
         return ret;
     }
     
