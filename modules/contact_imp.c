@@ -33,6 +33,7 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
+#define CONTACT_IMP_DATA_BYTES              (24U)   /**< 6×float 贴靠阻抗数据字节数 */
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -47,6 +48,11 @@ static host_handle_t g_contact_imp_host = NULL;
  * @brief 数据回调函数指针
  */
 static contact_imp_data_callback_t g_data_callback = NULL;
+
+/**
+ * @brief 6 路贴靠阻抗数据
+ */
+static float imp_data[6] = {0};
 
 /* Exported variables  -------------------------------------------------------*/
 
@@ -95,7 +101,7 @@ int contact_imp_ctrl_relay(uint8_t state)
     data[0] = state;
     
     return host_send_cmd(g_contact_imp_host,
-                        CMD_CTRL_CONTACT_IMP_RELAY,
+                        HOST_CMD_CTRL_CONTACT_IMP_RELAY,
                         data, 1U,
                         contact_imp_cmd_callback);
 }
@@ -119,7 +125,7 @@ int contact_imp_ctrl_detect(uint8_t state)
     data[0] = state;
     
     return host_send_cmd(g_contact_imp_host,
-                        CMD_CTRL_CONTACT_IMP_DETECT,
+                        HOST_CMD_CTRL_CONTACT_IMP_DETECT,
                         data, 1U,
                         contact_imp_cmd_callback);
 }
@@ -141,7 +147,7 @@ int contact_imp_get_data(contact_imp_data_callback_t callback)
     g_data_callback = callback;
     
     return host_send_cmd(g_contact_imp_host,
-                        CMD_REQ_CONTACT_IMP_DATA,
+                        HOST_CMD_REQ_CONTACT_IMP_DATA,
                         NULL, 0U,
                         contact_imp_cmd_callback);
 }
@@ -153,6 +159,28 @@ int contact_imp_get_data(contact_imp_data_callback_t callback)
 void contact_imp_set_data_callback(contact_imp_data_callback_t callback)
 {
     g_data_callback = callback;
+}
+
+/**
+ * @brief 存储贴靠检测板主动上传的贴靠阻抗数据（0x34）到内部 imp_data
+ */
+void contact_imp_store_upload_data(const uint8_t *data, uint16_t len)
+{
+    if ((data != NULL) && (len >= CONTACT_IMP_DATA_BYTES)) {
+        (void)memcpy(imp_data, data, CONTACT_IMP_DATA_BYTES);
+        LOG_D("contact_imp_data:[0] = %f,[1] = %f,[2] = %f,[3] = %f,[4] = %f,[5] = %f",
+                imp_data[0],imp_data[1],imp_data[2],imp_data[3],imp_data[4],imp_data[5]);
+    }
+}
+
+/**
+ * @brief 获取当前贴靠阻抗数据用于向上位机上传（0x38）
+ */
+void contact_imp_get_data_for_upload(uint8_t *buf, uint16_t buf_size)
+{
+    if ((buf != NULL) && (buf_size >= CONTACT_IMP_DATA_BYTES)) {
+        (void)memcpy(buf, (const void *)imp_data, CONTACT_IMP_DATA_BYTES);
+    }
 }
 
 /* Private functions ---------------------------------------------------------*/
@@ -169,23 +197,23 @@ static void contact_imp_cmd_callback(uint8_t cmd, uint8_t ack,
 {
     if (ack == ACK_OK) {
         switch (cmd) {
-        case CMD_CTRL_CONTACT_IMP_RELAY:
+        case HOST_CMD_CTRL_CONTACT_IMP_RELAY:
             LOG_I("Relay control OK");
             break;
             
-        case CMD_CTRL_CONTACT_IMP_DETECT:
+        case HOST_CMD_CTRL_CONTACT_IMP_DETECT:
             LOG_I("Detect control OK");
             break;
             
-        case CMD_REQ_CONTACT_IMP_DATA:
+        case HOST_CMD_REQ_CONTACT_IMP_DATA:
             /* 调用数据回调函数 */
             if (g_data_callback != NULL) {
                 g_data_callback(data, len);
             }
             LOG_D("Contact impedance data received, len=%d", (int)len);
-            
-            float imp_data[6] = {0};
-            memcpy(imp_data, data, 24);
+            if ((data != NULL) && (len >= CONTACT_IMP_DATA_BYTES)) {
+                (void)memcpy(imp_data, data, CONTACT_IMP_DATA_BYTES);
+            }
             LOG_D("contact_imp_data:[0] = %f,[1] = %f,[0] = %f,[2] = %f,[3] = %f,[4] = %f,[5] = %f",
                   imp_data[0],imp_data[1],imp_data[2],imp_data[3],imp_data[4],imp_data[5]);
             break;

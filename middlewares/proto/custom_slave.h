@@ -42,13 +42,13 @@ typedef enum {
  * @defgroup 上位机 -> 本板卡
  * @{
  */
-#define CMD_SELECT_CATHETER                 (0x30U)  /**< 选择导管 */
-#define CMD_GET_CATHETER_INFO               (0x31U)  /**< 获取导管信息 */
-#define CMD_SET_WORK_MODE                   (0x32U)  /**< 设置工作模式 */
-#define CMD_GET_WORK_MODE                   (0x33U)  /**< 获取工作模式 */
-#define CMD_PORT_CTRL                       (0x34U)  /**< 端口控制 */
-#define CMD_GET_LOOP_IMP_DATA               (0x35U)  /**< 获取回路阻抗数据 */
-#define CMD_GET_CONTACT_IMP_DATA            (0x36U)  /**< 获取贴靠阻抗数据 */
+#define SLAVE_CMD_SELECT_CATHETER           (0x30U)  /**< 选择导管 */
+#define SLAVE_CMD_GET_CATHETER_INFO         (0x31U)  /**< 获取导管信息 */
+#define SLAVE_CMD_SET_WORK_MODE             (0x32U)  /**< 设置工作模式 */
+#define SLAVE_CMD_GET_WORK_MODE             (0x33U)  /**< 获取工作模式 */
+#define SLAVE_CMD_PORT_CTRL                 (0x34U)  /**< 端口控制 */
+#define SLAVE_CMD_GET_LOOP_IMP_DATA         (0x35U)  /**< 获取回路阻抗数据 */
+#define SLAVE_CMD_GET_CONTACT_IMP_DATA      (0x36U)  /**< 获取贴靠阻抗数据 */
 /**
  * @}
  */
@@ -57,8 +57,8 @@ typedef enum {
  * @defgroup 本板卡 -> 上位机（上位机不用应答）
  * @{
  */
-#define CMD_UPLOAD_LOOP_IMP_DATA            (0x37U)  /**< 主动上传回路阻抗数据（以20ms的周期） */
-#define CMD_UPLOAD_CONTACT_IMP_DATA         (0x38U)  /**< 主动上传贴靠阻抗数据（以20ms的周期） */
+#define SLAVE_CMD_UPLOAD_LOOP_IMP_DATA      (0x37U)  /**< 主动上传回路阻抗数据（以20ms的周期） */
+#define SLAVE_CMD_UPLOAD_CONTACT_IMP_DATA   (0x38U)  /**< 主动上传贴靠阻抗数据（以20ms的周期） */
 /**
  * @}
  */

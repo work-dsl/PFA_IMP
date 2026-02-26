@@ -57,34 +57,36 @@ static stimer_t g_loop_imp_upload_timer;  /* 回路阻抗数据上传定时器 *
 static void upload_callback(uint8_t cmd, const uint8_t *data, uint16_t len)
 {
     LOG_I("Upload: cmd=0x%02X, len=%d", cmd, len);
+    if (cmd == HOST_CMD_UPLOAD_CONTACT_IMP_DATA) {
+        contact_imp_store_upload_data(data, len);
+    }
 }
 
-/* 回路阻抗数据上传定时器回调 */
+/* 阻抗数据上传定时器回调（回路/贴靠按工作模式二选一） */
 static void loop_imp_upload_timer_callback(void *arg)
 {
-    float imp_real = 0.0f;
-    
     (void)arg;
-    
+
     /* 检查上传使能标志 */
     if (cmd_get_loop_imp_upload_enable() == 0U) {
         return;
     }
-    
-    /* 检查当前工作模式是否为回路阻抗模式 */
-    if (port_ctrl_get_mode() != PORT_MODE_LOOP_IMP) {
-        return;
+
+    if (port_ctrl_get_mode() == PORT_MODE_LOOP_IMP) {
+        /* 回路阻抗模式：上传回路阻抗数据 */
+        float loop_imp_data = loop_imp_get_data();
+        LOG_D("Final:%.2f", loop_imp_data);
+        (void)slave_send_upload_frame(SLAVE_CMD_UPLOAD_LOOP_IMP_DATA,
+                                     (const uint8_t *)&loop_imp_data,
+                                     sizeof(float));
+    } else if (port_ctrl_get_mode() == PORT_MODE_CONTACT_IMP) {
+        /* 贴靠阻抗模式：上传贴靠阻抗数据 imp_data[6] */
+        uint8_t contact_buf[24];
+        contact_imp_get_data_for_upload(contact_buf, 24U);
+        (void)slave_send_upload_frame(SLAVE_CMD_UPLOAD_CONTACT_IMP_DATA,
+                                     contact_buf,
+                                     24U);
     }
-    
-    /* 获取最新的阻抗数据 */
-    float loop_imp_data = loop_imp_get_data();
-    
-    LOG_D("Final:%.2f", loop_imp_data);
-    
-    /* 发送主动上传帧（只上传实部，float类型，4字节） */
-    (void)slave_send_upload_frame(CMD_UPLOAD_LOOP_IMP_DATA, 
-                                 (const uint8_t*)&loop_imp_data, 
-                                 sizeof(float));
 }
 
 /*------------------------------ application ----------------------------------*/

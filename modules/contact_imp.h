@@ -86,6 +86,20 @@ int contact_imp_get_data(contact_imp_data_callback_t callback);
  */
 void contact_imp_set_data_callback(contact_imp_data_callback_t callback);
 
+/**
+ * @brief 存储贴靠检测板主动上传的贴靠阻抗数据（0x34）到内部 imp_data
+ * @param data 上传数据指针（6×float，24 字节）
+ * @param len 数据长度（应 >= 24 才写入）
+ */
+void contact_imp_store_upload_data(const uint8_t *data, uint16_t len);
+
+/**
+ * @brief 获取当前贴靠阻抗数据用于向上位机上传（0x38）
+ * @param buf 输出缓冲区指针
+ * @param buf_size 缓冲区大小（应 >= 24 才拷贝）
+ */
+void contact_imp_get_data_for_upload(uint8_t *buf, uint16_t buf_size);
+
 #ifdef __cplusplus
 }
 #endif

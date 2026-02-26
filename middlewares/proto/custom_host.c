@@ -34,7 +34,7 @@
 #include "board.h"
 
 #define  LOG_TAG             "custom_host"
-#define  LOG_LVL             4
+#define  LOG_LVL             3
 #include "log.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -591,8 +591,8 @@ static void host_process_frame(host_inst_t *host, const uint8_t *frame, uint16_t
             const uint8_t *data = NULL;
             uint16_t data_len = 0U;
             
-            /* 检查是否是主动上传命令 */
-            if (cmd == CMD_STATUS_UPLOAD) {
+            /* 检查是否是主动上传命令（状态上传 0x0C 或贴靠阻抗数据上传 0x34） */
+            if ((cmd == CMD_STATUS_UPLOAD) || (cmd == HOST_CMD_UPLOAD_CONTACT_IMP_DATA)) {
                 if (payload_len > 0U) {
                     data = &frame[5];
                     data_len = payload_len;

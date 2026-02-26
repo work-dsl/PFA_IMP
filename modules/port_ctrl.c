@@ -20,6 +20,7 @@
 #include "port_ctrl.h"
 #include "gpio.h"
 #include "tca6424.h"
+#include "contact_imp.h"
 #include <errno-base.h>
 
 #define  LOG_TAG             "port_ctrl"
@@ -531,6 +532,7 @@ static void port_ctrl_set_mode_relays(uint8_t ecg_map, uint8_t contact_imp, uint
 #else
     /* 通过贴靠检测板应用层控制继电器 */
     (void)contact_imp_ctrl_relay((uint8_t)(~contact_imp & 0x01U));
+    (void)contact_imp_ctrl_detect(contact_imp);
 #endif
     gpio_write(LOOP_IMP_RELAY_PIN_ID, (uint8_t)(~loop_imp & 0x01U));
     LOG_I("port ctrl set mode relays complete!");

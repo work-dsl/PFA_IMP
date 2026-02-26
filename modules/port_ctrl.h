@@ -58,7 +58,7 @@ typedef enum {
 
 /* Exported constants --------------------------------------------------------*/
 /* 后续改为使用GPIO控制贴靠继电器 */
-#define CONTACT_IMP_USE_GPIO            (1)
+#define CONTACT_IMP_USE_GPIO            (0)
 
 /* 模式选择继电器 GPIO 引脚定义 */
 #define ECG_MAP_RELAY_PIN_ID            (15)    /* PA15，心电标测继电器 */

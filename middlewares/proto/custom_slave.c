@@ -73,7 +73,7 @@ int slave_proto_init(void)
 {
     int ret;
 
-    port = serial_find("uart5");
+    port = serial_find("uart1");
     if (port == NULL) {
         LOG_D("Failed to find uart1\r\n");
         return -ENODEV;
@@ -321,33 +321,33 @@ void slave_process_frame(const uint8_t *frame, uint16_t len)
         /* 状态上传是非应答型命令，不需要回复 */
         break;
     /* 专有命令 */
-    case CMD_SELECT_CATHETER:
+    case SLAVE_CMD_SELECT_CATHETER:
         cmd_handle_select_catheter(payload, payload_len, &result);
-        slave_send_response_frame(CMD_SELECT_CATHETER, &result);
+        slave_send_response_frame(SLAVE_CMD_SELECT_CATHETER, &result);
         break;
-    case CMD_GET_CATHETER_INFO:
+    case SLAVE_CMD_GET_CATHETER_INFO:
         cmd_handle_get_catheter_info(payload, payload_len, &result);
-        slave_send_response_frame(CMD_GET_CATHETER_INFO, &result);
+        slave_send_response_frame(SLAVE_CMD_GET_CATHETER_INFO, &result);
         break;
-    case CMD_SET_WORK_MODE:
+    case SLAVE_CMD_SET_WORK_MODE:
         cmd_handle_set_work_mode(payload, payload_len, &result);
-        slave_send_response_frame(CMD_SET_WORK_MODE, &result);
+        slave_send_response_frame(SLAVE_CMD_SET_WORK_MODE, &result);
         break;
-    case CMD_GET_WORK_MODE:
+    case SLAVE_CMD_GET_WORK_MODE:
         cmd_handle_get_work_mode(payload, payload_len, &result);
-        slave_send_response_frame(CMD_GET_WORK_MODE, &result);
+        slave_send_response_frame(SLAVE_CMD_GET_WORK_MODE, &result);
         break;
-    case CMD_PORT_CTRL:
+    case SLAVE_CMD_PORT_CTRL:
         cmd_handle_port_ctrl(payload, payload_len, &result);
-        slave_send_response_frame(CMD_PORT_CTRL, &result);
+        slave_send_response_frame(SLAVE_CMD_PORT_CTRL, &result);
         break;
-    case CMD_GET_LOOP_IMP_DATA:
+    case SLAVE_CMD_GET_LOOP_IMP_DATA:
         cmd_handle_get_loop_imp_data(payload, payload_len, &result);
-        slave_send_response_frame(CMD_GET_LOOP_IMP_DATA, &result);
+        slave_send_response_frame(SLAVE_CMD_GET_LOOP_IMP_DATA, &result);
         break;
-    case CMD_GET_CONTACT_IMP_DATA:
+    case SLAVE_CMD_GET_CONTACT_IMP_DATA:
         cmd_handle_get_contact_imp_data(payload, payload_len, &result);
-        slave_send_response_frame(CMD_GET_CONTACT_IMP_DATA, &result);
+        slave_send_response_frame(SLAVE_CMD_GET_CONTACT_IMP_DATA, &result);
         break;
     
     default:

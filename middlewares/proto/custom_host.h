@@ -75,7 +75,7 @@ typedef void (*host_upload_callback_t)(uint8_t cmd, const uint8_t *data, uint16_
 /* Exported constants --------------------------------------------------------*/
 
 /**
- * @defgroup 从机专有命令
+ * @defgroup 主机专有命令
  * @{
  */
 
@@ -83,9 +83,20 @@ typedef void (*host_upload_callback_t)(uint8_t cmd, const uint8_t *data, uint16_
  * @defgroup 本板卡 -> 贴靠检测板
  * @{
  */
-#define CMD_CTRL_CONTACT_IMP_RELAY          (0x31U)  /**< 控制贴靠阻抗继电器开/关 */
-#define CMD_CTRL_CONTACT_IMP_DETECT         (0x32U)  /**< 控制贴靠阻抗检测启动/停止 */
-#define CMD_REQ_CONTACT_IMP_DATA            (0x33U)  /**< 请求贴靠检测板获取贴靠阻抗数据 */
+#define HOST_CMD_CTRL_CONTACT_IMP_RELAY     (0x31U)  /**< 控制贴靠阻抗继电器开/关 */
+#define HOST_CMD_CTRL_CONTACT_IMP_DETECT    (0x32U)  /**< 控制贴靠阻抗检测启动/停止 */
+#define HOST_CMD_REQ_CONTACT_IMP_DATA       (0x33U)  /**< 获取贴靠阻抗数据 */
+#define HOST_CMD_SET_CALIBRATION_COEFFICIENT (0x35U) /**< 设置校准系数 */
+#define HOST_CMD_GET_CALIBRATION_COEFFICIENT (0x36U) /**< 获取校准系数 */
+/**
+ * @}
+ */
+ 
+/**
+ * @defgroup 贴靠检测板 -> 本板卡
+ * @{
+ */
+#define HOST_CMD_UPLOAD_CONTACT_IMP_DATA    (0x34U)  /**< 主动上传贴靠阻抗数据 */
 /**
  * @}
  */
