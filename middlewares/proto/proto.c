@@ -28,6 +28,10 @@
 #include "minmax.h"
 #include "errno-base.h"
 
+#define  LOG_TAG             "proto"
+#define  LOG_LVL             3
+#include "log.h"
+
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
@@ -69,12 +73,20 @@ int proto_init(proto_t *inst, const proto_cfg_t *cfg,
                uint8_t *rx_buf, uint16_t buf_size,
                kfifo_t *out_fifo, proto_error_cb_t on_err)
 {
-    if ((inst == NULL) || (cfg == NULL) || (rx_buf == NULL) || (out_fifo == NULL)) {
+    if ((inst == NULL) || (cfg == NULL) || (rx_buf == NULL) || (out_fifo == NULL) || (buf_size == 0U)) {
+        LOG_E("proto_init: invalid parameters");
         return -EINVAL;
     }
-    
-    if (buf_size < cfg->max_frame_len) {
-        return -EINVAL;
+
+    LOG_ASSERT(cfg->type == FRAME_TYPE_FIXED || cfg->type == FRAME_TYPE_LEN_FIELD || cfg->type == FRAME_TYPE_TAIL);
+    LOG_ASSERT(cfg->head != NULL && cfg->head_len > 0U);
+    LOG_ASSERT(cfg->tail != NULL && cfg->tail_len > 0U);
+    LOG_ASSERT(cfg->max_frame_len > 0U && cfg->max_frame_len <= buf_size);
+    LOG_ASSERT(cfg->min_frame_len > 0U && cfg->min_frame_len <= cfg->max_frame_len);
+    LOG_ASSERT(cfg->is_big_endian == 0U || cfg->is_big_endian == 1U);
+
+    if (cfg->csum_cb != NULL) {
+        LOG_ASSERT(cfg->csum_size > 0U && cfg->csum_size <= 4U);
     }
     
     (void)memset(inst, 0, sizeof(proto_t));
@@ -185,11 +197,7 @@ static uint32_t raw_read_uint(const uint8_t *p, uint8_t size, uint8_t is_be)
 {
     uint32_t val = 0U;
     uint8_t i;
-    
-    if (p == NULL) {
-        return 0U;
-    }
-    
+
     if (is_be != 0U) {
         /* 大端：高位在前 */
         for (i = 0U; i < size; i++) {
@@ -217,11 +225,7 @@ static uint32_t raw_read_uint(const uint8_t *p, uint8_t size, uint8_t is_be)
 static int peek_byte_at(kfifo_t *fifo, unsigned int offset, uint8_t *byte)
 {
     unsigned int idx;
-    
-    if ((fifo == NULL) || (byte == NULL)) {
-        return 0;
-    }
-    
+
     /* 检查是否越界：利用 kfifo_len */
     if (offset >= kfifo_len(fifo)) {
         return 0;
@@ -241,11 +245,9 @@ static int peek_byte_at(kfifo_t *fifo, unsigned int offset, uint8_t *byte)
  */
 static inline void reset_state(proto_t *inst)
 {
-    if (inst != NULL) {
-        inst->state = P_STATE_FIND_HEAD;
-        inst->w_idx = 0U;
-        inst->target_len = 0U;
-    }
+    inst->state = P_STATE_FIND_HEAD;
+    inst->w_idx = 0U;
+    inst->target_len = 0U;
 }
 
 /**
@@ -256,12 +258,10 @@ static inline void reset_state(proto_t *inst)
  */
 static void report_err(proto_t *inst, proto_err_t err)
 {
-    if (inst != NULL) {
-        if (inst->on_error != NULL) {
-            inst->on_error(inst, err);
-        }
-        reset_state(inst);
+    if (inst->on_error != NULL) {
+        inst->on_error(inst, err);
     }
+    reset_state(inst);
 }
 
 /**
@@ -271,7 +271,7 @@ static void report_err(proto_t *inst, proto_err_t err)
  */
 static inline void update_tick(proto_t *inst)
 {
-    if ((inst != NULL) && (inst->get_tick != NULL)) {
+    if (inst->get_tick != NULL) {
         inst->last_tick = inst->get_tick();
     }
 }
@@ -290,10 +290,6 @@ static void check_timeout(proto_t *inst, kfifo_t *fifo)
     bool is_fifo_pending;
     uint32_t current_tick;
     uint32_t elapsed;
-
-    if ((inst == NULL) || (fifo == NULL) || (inst->cfg == NULL)) {
-        return;
-    }
 
     if ((inst->cfg->timeout_ms == 0U) || (inst->get_tick == NULL)) {
         return;
@@ -341,11 +337,7 @@ static void finalize_frame(proto_t *inst)
     uint16_t payload_start;
     uint16_t payload_end;
     uint16_t payload_len;
-    
-    if ((inst == NULL) || (inst->cfg == NULL)) {
-        return;
-    }
-    
+
     cfg = inst->cfg;
     total_len = inst->w_idx;
     
@@ -386,16 +378,20 @@ static void finalize_frame(proto_t *inst)
     
     /* 4. 提取有效 Payload 并推入输出 FIFO */
     /* 定义：Payload 不包含 Head, Tail, Checksum */
+    /* 输出格式：先写 2 字节记录长度（小端，= payload_len），再写 payload，便于消费端按帧切分且不依赖 payload 内协议 LEN */
     payload_start = cfg->head_len;
     payload_end = total_len - cfg->tail_len - cfg->csum_size;
     
     if (payload_end > payload_start) {
         payload_len = payload_end - payload_start;
         
-        /* 检查输出队列空间 */
-        if (kfifo_avail(inst->out_fifo) >= payload_len) {
-            /* 推入有效数据 */
-            kfifo_in(inst->out_fifo, &inst->rx_buf[payload_start], payload_len);
+        /* 检查输出队列空间：记录长度前缀 2 字节 + payload */
+        if (kfifo_avail(inst->out_fifo) >= (unsigned int)(payload_len + 2U)) {
+            uint8_t len_buf[2];
+            len_buf[0] = (uint8_t)(payload_len & 0xFFU);
+            len_buf[1] = (uint8_t)(payload_len >> 8U);
+            kfifo_in(inst->out_fifo, len_buf, 2U);
+            kfifo_in(inst->out_fifo, &inst->rx_buf[payload_start], (unsigned int)payload_len);
         } else {
             report_err(inst, PROTO_ERR_OUT_FIFO_FULL);
         }
@@ -426,22 +422,11 @@ static int handle_find_head(proto_t *inst, kfifo_t *fifo)
     uint16_t frame_len;
     uint8_t tail_byte;
 
-    if ((inst == NULL) || (fifo == NULL) || (inst->cfg == NULL)) {
-        return 0;
-    }
-
     cfg = inst->cfg;
     fifo_total = kfifo_len(fifo);
-    if (fifo_total == 0U) {
-        return 0;
-    }
 
     /* 获取线性连续内存块，用于 memchr 零拷贝查找 */
     linear_cnt = kfifo_out_linear(fifo, &tail_idx, fifo_total);
-    if (linear_cnt == 0U) {
-        return 0;
-    }
-
     base_ptr = (const uint8_t *)fifo->data + tail_idx;
     found = (const uint8_t *)memchr(base_ptr, cfg->head[0], linear_cnt);
 
@@ -456,15 +441,13 @@ static int handle_find_head(proto_t *inst, kfifo_t *fifo)
     skip = (unsigned int)(found - base_ptr);
     if (skip > 0U) {
         kfifo_skip_count(fifo, skip);
+        fifo_total = kfifo_len(fifo); // 重新获取剩余长度
         update_tick(inst);
     }
 
-    /* 重新获取剩余长度（skip 后 out 已变化） */
-    fifo_total = kfifo_len(fifo);
-
     /* 基本检查：剩余数据是否足够匹配完整帧头 */
     if (fifo_total < cfg->head_len) {
-        return (skip > 0U) ? 1 : 0;
+        return (skip > 0U) ? 1 : 0; // 为什么若本轮曾跳过数据则返回 1（避免一直卡在同一位置），请举详细例子说明
     }
 
     /* 长度与尾部预判（仅针对 LEN_FIELD 类型） */
@@ -569,10 +552,6 @@ static int handle_read_len(proto_t *inst, kfifo_t *fifo)
     uint32_t raw;
     uint16_t final;
 
-    if ((inst == NULL) || (fifo == NULL) || (inst->cfg == NULL)) {
-        return 0;
-    }
-
     cfg = inst->cfg;
     len_end = (uint16_t)cfg->len_cfg.len_offset + (uint16_t)cfg->len_cfg.len_size;
 
@@ -625,10 +604,6 @@ static int handle_recv_body(proto_t *inst, kfifo_t *fifo)
     uint16_t remain;
     unsigned int copy_len;
 
-    if ((inst == NULL) || (fifo == NULL)) {
-        return 0;
-    }
-
     if (inst->w_idx >= inst->target_len) {
         finalize_frame(inst);
         return 1;
@@ -669,10 +644,6 @@ static int handle_match_tail(proto_t *inst, kfifo_t *fifo)
     uint8_t tail_last_byte;
     const uint8_t *found;
     unsigned int copy_len;
-
-    if ((inst == NULL) || (fifo == NULL) || (inst->cfg == NULL)) {
-        return 0;
-    }
 
     cfg = inst->cfg;
     fifo_len = kfifo_len(fifo);

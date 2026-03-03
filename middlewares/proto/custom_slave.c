@@ -131,10 +131,25 @@ void slave_proto_task(void)
         (void)proto_poll(&g_slave_proto, &port->rx_fifo);
     }
 
-    /* 从输出队列中读取并处理帧 */
-    while (kfifo_len(&g_slave_valid_fifo) > 0U) {
-        frame_len = kfifo_out(&g_slave_valid_fifo, frame_buf, sizeof(frame_buf));
-        if (frame_len > 0U) {
+    /* 从输出队列按帧读取并处理（FIFO 格式：2 字节记录长度前缀(小端) + payload，由 proto 校验后写入） */
+    while (kfifo_len(&g_slave_valid_fifo) >= 2U) {
+        unsigned int avail = kfifo_len(&g_slave_valid_fifo);
+        uint16_t record_len;
+
+        if (kfifo_out_peek(&g_slave_valid_fifo, frame_buf, 2U) != 2U) {
+            break;
+        }
+        record_len = (uint16_t)((uint16_t)frame_buf[0] | ((uint16_t)frame_buf[1] << 8U));
+        if ((record_len < 5U) || (record_len > (PROTO_CUSTOM_FRAME_MAX_LEN - 4U))) {
+            (void)kfifo_out(&g_slave_valid_fifo, frame_buf, 1U);
+            continue;
+        }
+        if (avail < (unsigned int)(2U + record_len)) {
+            break;
+        }
+        (void)kfifo_out(&g_slave_valid_fifo, frame_buf, 2U);
+        frame_len = kfifo_out(&g_slave_valid_fifo, frame_buf, (unsigned int)record_len);
+        if (frame_len == (unsigned int)record_len) {
             slave_process_frame(frame_buf, (uint16_t)frame_len);
         }
     }

@@ -162,8 +162,8 @@
     #define BSP_UART5_TX_PIN                GPIO_PIN_12
     #define BSP_UART5_RX_PORT               GPIOD
     #define BSP_UART5_RX_PIN                GPIO_PIN_2
-    #define UART5_RX_BUF_SIZE               256
-    #define UART5_TX_BUF_SIZE               256
+    #define UART5_RX_BUF_SIZE               1024
+    #define UART5_TX_BUF_SIZE               1024
     #define UART5_RX_CACHE_BUF_SIZE         64
     #define BSP_UART5_IRQ_PRIORITY          0
 #endif

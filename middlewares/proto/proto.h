@@ -104,20 +104,21 @@ typedef struct {
     /* 帧头与帧尾定义 */
     const uint8_t      *head;           /**< 帧头序列指针 */
     uint8_t             head_len;       /**< 帧头长度 */
-    const uint8_t      *tail;           /**< 帧尾序列指针（可为NULL） */
-    uint8_t             tail_len;       /**< 帧尾长度（无尾则填0） */
+    const uint8_t      *tail;           /**< 帧尾序列指针 */
+    uint8_t             tail_len;       /**< 帧尾长度 */
     
     /* 长度限制 */
     uint16_t            max_frame_len;   /**< 最大允许帧长（对于 FIXED 模式，此值即为固定长度） */
-    uint16_t            min_frame_len;   /**< 最小允许帧长（若为0，代码内不进行最小检查） */
+    uint16_t            min_frame_len;   /**< 最小允许帧长（对于 FIXED 模式，此值即为固定长度） */
     
     /* 长度字段参数（仅 FRAME_TYPE_LEN_FIELD 有效） */
     proto_len_cfg_t     len_cfg;
     
     /* 校验参数 */
     uint8_t             csum_offset;    /**< 校验计算起始偏移（相对于帧头） */
-    uint8_t             csum_size;      /**< 校验值长度（0、1、2、4字节） */
-    proto_checksum_cb_t csum_cb;         /**< 校验计算回调（可为NULL） */
+    uint8_t             csum_size;      /**< 校验值长度（1、2、4字节）,仅在csum_cb不为NULL时有效 */
+    proto_checksum_cb_t csum_cb;        /**< 校验计算回调（可为NULL） */
+
     uint8_t             is_big_endian;  /**< 字节序：1=大端，0=小端（用于读取长度和校验值） */
     
     uint32_t            timeout_ms;      /**< 帧内超时时间（0表示不启用超时检测） */

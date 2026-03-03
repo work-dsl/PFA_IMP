@@ -273,10 +273,28 @@ void host_task(host_handle_t host)
         (void)proto_poll(&h->proto, &h->port->rx_fifo);
     }
     
-    /* 从输出队列中读取并处理帧 */
-    while (kfifo_len(&h->valid_fifo) > 0U) {
-        frame_len = kfifo_out(&h->valid_fifo, frame_buf, sizeof(frame_buf));
-        if (frame_len > 0U) {
+    /* 从输出队列按帧读取并处理（FIFO 格式：2 字节记录长度前缀(小端) + payload，由 proto 校验后写入） */
+    while (kfifo_len(&h->valid_fifo) >= 2U) {
+        unsigned int avail = kfifo_len(&h->valid_fifo);
+        uint16_t record_len;
+
+        /* peek 前 2 字节得到本帧 payload 长度（解析器 push 时写入，非协议 LEN 字段） */
+        if (kfifo_out_peek(&h->valid_fifo, frame_buf, 2U) != 2U) {
+            break;
+        }
+        record_len = (uint16_t)((uint16_t)frame_buf[0] | ((uint16_t)frame_buf[1] << 8U));
+
+        /* 长度合法性：自定义协议 payload 长度范围 [5, 60] */
+        if ((record_len < 5U) || (record_len > (PROTO_CUSTOM_FRAME_MAX_LEN - 4U))) {
+            (void)kfifo_out(&h->valid_fifo, frame_buf, 1U);
+            continue;
+        }
+        if (avail < (unsigned int)(2U + record_len)) {
+            break;
+        }
+        (void)kfifo_out(&h->valid_fifo, frame_buf, 2U);
+        frame_len = kfifo_out(&h->valid_fifo, frame_buf, (unsigned int)record_len);
+        if (frame_len == (unsigned int)record_len) {
             host_process_frame(h, frame_buf, (uint16_t)frame_len);
         }
     }
@@ -705,6 +723,8 @@ static int host_send_cmd_frame(host_inst_t *host, uint8_t cmd, const uint8_t *da
     int flen;
     uint8_t frame[512U];
     
+    uint32_t tick;
+    
     if (host->port == NULL) {
         return -1;
     }
@@ -719,6 +739,8 @@ static int host_send_cmd_frame(host_inst_t *host, uint8_t cmd, const uint8_t *da
     if (flen > 0) {
         (void)serial_write(host->port, frame, (uint16_t)flen);
         LOG_D("Send command frame: cmd=0x%02X, len=%d", cmd, (int)data_len);
+        tick = HAL_GetTick();
+        LOG_D("Tick=%d", tick);
         return 0;
     }
     
